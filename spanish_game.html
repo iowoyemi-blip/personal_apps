@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spanish Mouse — Canvas Learning App</title>
+  <style>
+    html, body { height: 100%; margin: 0; background: #0f0f13; }
+    canvas { display:block; width:100%; height:100%; image-rendering: -webkit-optimize-contrast; }
+    /* All UI is rendered in <canvas>. No DOM controls. */
+  </style>
+</head>
+<body>
+  <canvas id="app"></canvas>
+  <script>
+  (() => {
+    // ====== Canvas & Rendering Setup ======
+    const canvas = document.getElementById('app');
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      canvas.width = Math.floor(innerWidth * dpr);
+      canvas.height = Math.floor(innerHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // draw in CSS pixels
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // ====== Theme ======
+    const THEME = {
+      name: 'Casa de Queso',
+      bgTop: '#151a24',
+      bgBottom: '#232a3a',
+      accent: '#ffd166', // cheese gold
+      accent2: '#ef476f', // fiesta pink
+      accent3: '#06d6a0', // mint
+      text: '#f7f8ff',
+      subtle: '#9aa4bd',
+      shadow: 'rgba(0,0,0,0.3)'
+    };
+
+    // ====== Utilities ======
+    const lerp = (a,b,t)=>a+(b-a)*t;
+    function gradientBackground() {
+      const grd = ctx.createLinearGradient(0,0,0,innerHeight);
+      grd.addColorStop(0, THEME.bgTop);
+      grd.addColorStop(1, THEME.bgBottom);
+      ctx.fillStyle = grd;
+      ctx.fillRect(0,0,innerWidth,innerHeight);
+    }
+    function dropShadow(x,y,blur=20, color=THEME.shadow){
+      ctx.shadowOffsetX = x; ctx.shadowOffsetY = y; ctx.shadowBlur = blur; ctx.shadowColor = color;
+    }
+    function clearShadow(){ ctx.shadowOffsetX = ctx.shadowOffsetY = ctx.shadowBlur = 0; }
+
+    function roundRect(x,y,w,h,r){
+      const rr = Math.min(r, Math.abs(w)/2, Math.abs(h)/2);
+      ctx.beginPath();
+      ctx.moveTo(x+rr, y);
+      ctx.arcTo(x+w, y, x+w, y+h, rr);
+      ctx.arcTo(x+w, y+h, x, y+h, rr);
+      ctx.arcTo(x, y+h, x, y, rr);
+      ctx.arcTo(x, y, x+w, y, rr);
+      ctx.closePath();
+    }
+    function fillCard(x,y,w,h, fill= '#1e2433', stroke=THEME.accent){
+      dropShadow(0,10,20);
+      roundRect(x,y,w,h,18);
+      ctx.fillStyle = fill; ctx.fill();
+      clearShadow();
+      ctx.lineWidth = 2; ctx.strokeStyle = stroke; ctx.stroke();
+    }
+    function drawPill(x,y,w,h, text, color){
+      roundRect(x,y,w,h,h/2);
+      ctx.fillStyle = color; ctx.fill();
+      ctx.fillStyle = '#0c0e14';
+      ctx.font = `${Math.floor(h*0.5)}px ui-rounded, system-ui, -apple-system, Segoe UI, Roboto`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(text, x+w/2, y+h/2+1);
+    }
+    function drawText(text, x, y, size=28, color=THEME.text, align='left', base='alphabetic'){
+      ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = base;
+      ctx.font = `${size}px ui-rounded, system-ui, -apple-system, Segoe UI, Roboto`;
+      ctx.fillText(text, x, y);
+    }
+
+    // ====== Persistent Progress (Local Storage) ======
+    const STORE_KEY = 'spanish_mouse_progress_v1';
+    const todayStr = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+
+    function defaultStore(){
+      return {
+        version: 1,
+        createdAt: new Date().toISOString(),
+        lastActiveDate: todayStr(),
+        streak: 0,
+        days: {
+          // [date]: { minutes, flashSeen, quizCorrect, quizTotal, cheeses, wordsHeard: ["hola", ...] }
+        }
+      }
+    }
+    function loadStore(){
+      try{ const raw = localStorage.getItem(STORE_KEY); if(!raw) return defaultStore();
+        const s = JSON.parse(raw);
+        return s && s.version===1 ? s : defaultStore();
+      }catch{ return defaultStore(); }
+    }
+    function saveStore(){ localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
+    function ensureDay(date){
+      if(!store.days[date]) store.days[date] = { minutes:0, flashSeen:0, quizCorrect:0, quizTotal:0, cheeses:0, wordsHeard:[] };
+      return store.days[date];
+    }
+    let store = loadStore();
+
+    function bumpStreakOnActivity(){
+      const last = store.lastActiveDate;
+      const t = todayStr();
+      if(last !== t){
+        const diff = (d1,d2)=> Math.round((new Date(d1)-new Date(d2))/86400000);
+        const daysBetween = diff(t, last);
+        if(daysBetween === 1) store.streak += 1; else store.streak = 1;
+        store.lastActiveDate = t; saveStore();
+      }
+    }
+
+    // ====== Lexicon ======
+    const WORDS = [
+      {es:'hola', en:'hello'}, {es:'adiós', en:'goodbye'}, {es:'gracias', en:'thank you'}, {es:'por favor', en:'please'},
+      {es:'sí', en:'yes'}, {es:'no', en:'no'}, {es:'perdón', en:'sorry'}, {es:'buenos días', en:'good morning'},
+      {es:'buenas tardes', en:'good afternoon'}, {es:'buenas noches', en:'good night'}, {es:'¿cómo estás?', en:'how are you?'},
+      {es:'bien', en:'well'}, {es:'mal', en:'bad'}, {es:'más o menos', en:'so-so'}, {es:'¿cuánto cuesta?', en:'how much is it?'},
+      {es:'baño', en:'bathroom'}, {es:'agua', en:'water'}, {es:'comida', en:'food'}, {es:'café', en:'coffee'}, {es:'leche', en:'milk'},
+      {es:'pan', en:'bread'}, {es:'queso', en:'cheese'}, {es:'manzana', en:'apple'}, {es:'naranja', en:'orange'}, {es:'plátano', en:'banana'},
+      {es:'rojo', en:'red'}, {es:'azul', en:'blue'}, {es:'verde', en:'green'}, {es:'amarillo', en:'yellow'}, {es:'negro', en:'black'},
+      {es:'blanco', en:'white'}, {es:'grande', en:'big'}, {es:'pequeño', en:'small'}, {es:'rápido', en:'fast'}, {es:'lento', en:'slow'},
+      {es:'caliente', en:'hot'}, {es:'frío', en:'cold'}, {es:'feliz', en:'happy'}, {es:'triste', en:'sad'}, {es:'libro', en:'book'},
+      {es:'escuela', en:'school'}, {es:'casa', en:'house'}, {es:'trabajo', en:'work'}, {es:'familia', en:'family'}, {es:'amigo', en:'friend'},
+      {es:'perro', en:'dog'}, {es:'gato', en:'cat'}, {es:'quiero', en:'I want'}, {es:'necesito', en:'I need'}, {es:'me gusta', en:'I like'},
+      {es:'no me gusta', en:"I don't like"}, {es:'ayer', en:'yesterday'}, {es:'hoy', en:'today'}, {es:'mañana', en:'tomorrow'},
+      {es:'uno', en:'one'}, {es:'dos', en:'two'}, {es:'tres', en:'three'}, {es:'cuatro', en:'four'}, {es:'cinco', en:'five'},
+      {es:'seis', en:'six'}, {es:'siete', en:'seven'}, {es:'ocho', en:'eight'}, {es:'nueve', en:'nine'}, {es:'diez', en:'ten'},
+      {es:'izquierda', en:'left'}, {es:'derecha', en:'right'}, {es:'arriba', en:'up'}, {es:'abajo', en:'down'}
+    ];
+
+    // Shuffle helper for game/quiz
+    function shuffled(arr){ const a = arr.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; }
+
+    // ====== Speech (voice-over) ======
+    let voices = [];
+    function loadVoices(){ voices = speechSynthesis.getVoices().filter(v=>/es|Spanish/i.test(v.lang)); }
+    loadVoices();
+    if (typeof speechSynthesis !== 'undefined') {
+      speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    let lastSpoken = null;
+    function speakSpanish(wordES, alsoShowEN){
+      if(!window.speechSynthesis) return;
+      const u = new SpeechSynthesisUtterance(wordES);
+      const prefer = voices.find(v=>/Mexico|US|Latin/i.test(v.name+v.lang)) || voices[0];
+      if(prefer){ u.voice = prefer; u.lang = prefer.lang; } else { u.lang = 'es-ES'; }
+      u.rate = 0.95; u.pitch = 1; u.volume = 1;
+      speechSynthesis.cancel(); // ensure fresh
+      speechSynthesis.speak(u);
+      lastSpoken = {es: wordES, en: alsoShowEN};
+    }
+
+    // ====== Input Handling ======
+    const input = { mx:0, my:0, clicked:false, down:false, key:{} };
+    canvas.addEventListener('mousemove', e=>{ const r = canvas.getBoundingClientRect(); input.mx = e.clientX - r.left; input.my = e.clientY - r.top; });
+    canvas.addEventListener('mousedown', ()=>{ input.down=true; input.clicked=true; });
+    canvas.addEventListener('mouseup', ()=>{ input.down=false; });
+    canvas.addEventListener('mouseleave', ()=>{ input.down=false; });
+    window.addEventListener('keydown', e=>{ input.key[e.key] = true; if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault(); });
+    window.addEventListener('keyup', e=>{ input.key[e.key] = false; });
+
+    // ====== Buttons (Canvas hit-test) ======
+    class Button {
+      constructor(x,y,w,h,label, color, onClick){ Object.assign(this,{x,y,w,h,label,color,onClick}); }
+      contains(px,py){ return px>=this.x && px<=this.x+this.w && py>=this.y && py<=this.y+this.h; }
+      draw(){
+        const hover = this.contains(input.mx,input.my);
+        const c = hover? THEME.accent3 : (this.color||THEME.accent);
+        drawPill(this.x, this.y, this.w, this.h, this.label, c);
+      }
+      update(){ if(this.contains(input.mx,input.my) && input.clicked){ this.onClick && this.onClick(); }
+      }
+    }
+
+    // ====== Scene Manager ======
+    const Scene = { current: null };
+    function setScene(s){ Scene.current = s; }
+
+    // ====== Global Session Timer ======
+    let sessionStart = Date.now();
+    function commitMinutes(){
+      const mins = (Date.now()-sessionStart)/60000;
+      const d = ensureDay(todayStr());
+      d.minutes += mins; sessionStart = Date.now(); saveStore();
+    }
+
+    // ====== Home/Menu Scene ======
+    const MenuScene = {
+      buttons: [],
+      init(){
+        this.buttons = [];
+        const bw = 260, bh = 56, gap = 18;
+        const startY = innerHeight/2 - (bh*4 + gap*3)/2;
+        const labels = [
+          {label:'Flashcards', scene:'flash'},
+          {label:'Quiz', scene:'quiz'},
+          {label:'Mouse & Cheese Game', scene:'game'},
+          {label:'Progress', scene:'progress'},
+        ];
+        labels.forEach((it,i)=>{
+          this.buttons.push(new Button(innerWidth/2 - bw/2, startY + i*(bh+gap), bw, bh, it.label, THEME.accent, ()=>{
+            bumpStreakOnActivity(); commitMinutes();
+            if(it.scene==='flash') setScene(FlashScene);
+            if(it.scene==='quiz') setScene(QuizScene);
+            if(it.scene==='game') setScene(GameScene);
+            if(it.scene==='progress') setScene(ProgressScene);
+          }));
+        });
+      },
+      update(){ this.buttons.forEach(b=>b.update()); },
+      draw(){
+        gradientBackground();
+        // Festive confetti rings background
+        for(let i=0;i<60;i++){
+          const x = (i*73 % innerWidth), y = ((i*i*19)% innerHeight);
+          const r = (i%7)+3; ctx.globalAlpha = 0.08 + (i%5)*0.02;
+          ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle = [THEME.accent,THEME.accent2,THEME.accent3,'#7ea1ff'][i%4]; ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        drawText('Spanish Mouse', innerWidth/2, 120, 64, THEME.accent, 'center', 'alphabetic');
+        drawText('Aprende español jugando — learn by doing!', innerWidth/2, 165, 22, THEME.subtle, 'center');
+
+        // Streak badge
+        const d = ensureDay(todayStr());
+        fillCard(innerWidth/2-180, 200, 360, 110, '#1b2130');
+        drawText(`Daily streak: ${store.streak} 🔥`, innerWidth/2, 240, 28, THEME.text, 'center');
+        drawText(`Today • ${Math.round(d.minutes)} min • ${d.flashSeen} cards • ${d.quizCorrect}/${d.quizTotal} quiz • ${d.cheeses} cheese`, innerWidth/2, 285, 16, THEME.subtle, 'center');
+
+        this.buttons.forEach(b=>b.draw());
+        drawText('Press Esc for menu at any time · R to replay word in game · M to mute voice', innerWidth/2, innerHeight-24, 14, THEME.subtle, 'center');
+      }
+    };
+
+    // ====== Flashcards ======
+    const FlashScene = {
+      idx: 0,
+      showFront: true,
+      order: [],
+      buttons: [],
+      init(){
+        this.order = shuffled(WORDS);
+        this.idx = 0; this.showFront = true;
+        const backBtn = new Button(24, 24, 120, 44, '⟵ Menu', THEME.accent2, ()=>{ commitMinutes(); setScene(MenuScene); });
+        const flipBtn = new Button(innerWidth/2-80, innerHeight-90, 160, 48, 'Flip (Space)', THEME.accent, ()=>{ this.showFront=!this.showFront; });
+        const knewBtn = new Button(innerWidth-340, innerHeight-90, 150, 48, 'I knew it', THEME.accent3, ()=>{ ensureDay(todayStr()).flashSeen++; this.next(); });
+        const nextBtn = new Button(innerWidth-170, innerHeight-90, 150, 48, 'Next ▶', THEME.accent, ()=>{ ensureDay(todayStr()).flashSeen++; this.next(); });
+        this.buttons = [backBtn, flipBtn, knewBtn, nextBtn];
+      },
+      next(){ this.idx = (this.idx+1) % this.order.length; this.showFront = true; saveStore(); },
+      update(){
+        if(input.clicked) this.buttons.forEach(b=>b.update());
+        if(input.key[' ']){ this.showFront=!this.showFront; input.key[' ']=false; }
+      },
+      draw(){
+        gradientBackground();
+        drawText('Flashcards', innerWidth/2, 60, 42, THEME.accent, 'center');
+        const cardW = Math.min(600, innerWidth-80), cardH = Math.min(300, innerHeight-220);
+        const cx = innerWidth/2 - cardW/2, cy = innerHeight/2 - cardH/2;
+        fillCard(cx, cy, cardW, cardH, '#1b2130');
+        const {es,en} = this.order[this.idx];
+        drawText(this.showFront? es : en, innerWidth/2, innerHeight/2+10, this.showFront? 56:46, THEME.text, 'center','middle');
+        drawText(this.showFront? 'Tap Flip to reveal meaning' : 'Press Next or Knew it', innerWidth/2, innerHeight/2 + 80, 16, THEME.subtle, 'center','alphabetic');
+        this.buttons.forEach(b=>b.draw());
+      }
+    };
+
+    // ====== Quiz (fixed) ======
+    const QuizScene = {
+      q: null, options: [],
+      buttons: [], feedback: '', timer: 0,
+      init(){ this.makeQuestion();
+        this.buttons = [
+          new Button(24, 24, 120, 44, '⟵ Menu', THEME.accent2, ()=>{ commitMinutes(); setScene(MenuScene); })
+        ];
+      },
+      makeQuestion(){
+        // Pick one correct answer and three distinct wrong answers
+        const correct = WORDS[Math.floor(Math.random()*WORDS.length)];
+        const wrongs = shuffled(
+          WORDS.filter(w => w !== correct && w.en !== correct.en && w.es !== correct.es)
+        ).slice(0, 3);
+        this.q = correct;
+        // Ensure the correct option is ALWAYS included, then shuffle the 4
+        this.options = shuffled([correct, ...wrongs]);
+        this.feedback=''; this.timer=0;
+      },
+      handleAnswer(opt){
+        const d = ensureDay(todayStr()); d.quizTotal++;
+        // Compare by Spanish to avoid synonym collisions
+        if(opt.es === this.q.es){ d.quizCorrect++; this.feedback='Correct! 🎉'; }
+        else { this.feedback=`Oops — “${this.q.es}” means “${this.q.en}”.`; }
+        saveStore();
+        setTimeout(()=>this.makeQuestion(), 800);
+      },
+      update(){
+        if(input.clicked){
+          // check option clicks
+          const startY = 260, gap = 72, w = Math.min(520, innerWidth-120), x = innerWidth/2 - w/2;
+          this.options.forEach((opt,i)=>{
+            const y = startY + i*gap; const h = 52;
+            if(input.mx>=x && input.mx<=x+w && input.my>=y && input.my<=y+h){ this.handleAnswer(opt); }
+          });
+          this.buttons.forEach(b=>b.update());
+        }
+      },
+      draw(){
+        gradientBackground();
+        drawText('Quick Quiz', innerWidth/2, 60, 42, THEME.accent, 'center');
+        fillCard(innerWidth/2-300, 110, 600, 120, '#1b2130');
+        drawText(`What does “${this.q.es}” mean?`, innerWidth/2, 170, 28, THEME.text, 'center','middle');
+        const w = Math.min(520, innerWidth-120), x = innerWidth/2 - w/2, startY = 260, gap = 72, h=52;
+        this.options.forEach((opt,i)=>{
+          const y = startY + i*gap; fillCard(x,y,w,h,'#222a3f', '#334165');
+          drawText(opt.en, x+18, y+h/2+6, 22, THEME.text, 'left', 'middle');
+        });
+        if(this.feedback){ drawText(this.feedback, innerWidth/2, startY+gap*4, 20, THEME.accent3, 'center'); }
+        this.buttons.forEach(b=>b.draw());
+      }
+    };
+
+    // ====== Mouse & Cheese Game (Snake-style) ======
+    const GameScene = {
+      grid: 24, cols: 0, rows: 0,
+      mouse: [], dir: {x:1,y:0}, pendingDir: {x:1,y:0}, speed: 8, tick:0,
+      cheese: null,
+      play: false, score: 0, wordsQueue: [], mute:false,
+      buttons: [],
+      init(){
+        const backBtn = new Button(24,24,120,44,'⟵ Menu', THEME.accent2, ()=>{ commitMinutes(); setScene(MenuScene); });
+        this.buttons=[backBtn];
+        this.reset();
+        window.addEventListener('keydown', this.onKey);
+      },
+      onKey: (e)=>{
+        const k = e.key;
+        if(k==='ArrowUp' && GameScene.dir.y!==1) GameScene.pendingDir={x:0,y:-1};
+        if(k==='ArrowDown' && GameScene.dir.y!==-1) GameScene.pendingDir={x:0,y:1};
+        if(k==='ArrowLeft' && GameScene.dir.x!==1) GameScene.pendingDir={x:-1,y:0};
+        if(k==='ArrowRight' && GameScene.dir.x!==-1) GameScene.pendingDir={x:1,y:0};
+        if(k==='r' || k==='R'){ if(lastSpoken && !GameScene.mute) speakSpanish(lastSpoken.es, lastSpoken.en); }
+        if(k==='m' || k==='M'){ GameScene.mute = !GameScene.mute; }
+      },
+      reset(){
+        this.cols = Math.floor(innerWidth/this.grid);
+        this.rows = Math.floor((innerHeight-120)/this.grid);
+        const cx = Math.floor(this.cols/2), cy = Math.floor(this.rows/2);
+        this.mouse = [{x:cx,y:cy}];
+        this.dir = {x:1,y:0}; this.pendingDir={x:1,y:0};
+        this.score = 0; this.play = false; this.tick = 0;
+        this.wordsQueue = shuffled(WORDS.slice());
+        this.spawnCheese();
+      },
+      spawnCheese(){
+        const occ = new Set(this.mouse.map(p=>`${p.x},${p.y}`));
+        let x=0,y=0; do{ x=Math.floor(Math.random()*this.cols); y=Math.floor(Math.random()*this.rows); }while(occ.has(`${x},${y}`));
+        this.cheese = {x,y};
+      },
+      step(){
+        this.dir = this.pendingDir;
+        const head = {x:this.mouse[0].x + this.dir.x, y:this.mouse[0].y + this.dir.y};
+        if(head.x<0 || head.x>=this.cols || head.y<0 || head.y>=this.rows || this.mouse.some(p=>p.x===head.x && p.y===head.y)){
+          this.play=false; // game over
+          return;
+        }
+        this.mouse.unshift(head);
+        if(head.x===this.cheese.x && head.y===this.cheese.y){
+          this.score++;
+          ensureDay(todayStr()).cheeses++;
+          // Speak a new Spanish word
+          const word = this.wordsQueue.shift() || WORDS[Math.floor(Math.random()*WORDS.length)];
+          const d = ensureDay(todayStr());
+          if(d.wordsHeard.indexOf(word.es)===-1) d.wordsHeard.push(word.es);
+          saveStore();
+          if(!this.mute) speakSpanish(word.es, word.en);
+          this.spawnCheese();
+        } else {
+          this.mouse.pop();
+        }
+      },
+      update(){
+        if(input.clicked){ this.buttons.forEach(b=>b.update()); }
+        this.tick += this.speed * (1/60);
+        if(this.play && this.tick>=1){ this.tick = 0; this.step(); }
+        // Start on click inside field
+        if(!this.play && input.clicked){
+          const field = this.fieldRect();
+          if(input.mx>=field.x && input.mx<=field.x+field.w && input.my>=field.y && input.my<=field.y+field.h){ this.play=true; }
+        }
+      },
+      fieldRect(){
+        const w = this.cols*this.grid, h = this.rows*this.grid;
+        const x = Math.max(20, innerWidth/2 - w/2);
+        const y = 100;
+        return {x,y,w,h};
+      },
+      drawMouseCell(cx,cy){
+        const x = cx*this.grid + this.fieldRect().x;
+        const y = cy*this.grid + this.fieldRect().y;
+        // Mouse body segment
+        ctx.fillStyle = '#c2c9ff';
+        roundRect(x+2,y+2,this.grid-4,this.grid-4,6); ctx.fill();
+      },
+      drawCheese(){
+        const {x,y} = this.cheese; const g = this.grid; const fx = x*g + this.fieldRect().x; const fy = y*g + this.fieldRect().y;
+        // Cheese wedge
+        ctx.save();
+        ctx.translate(fx+g/2, fy+g/2);
+        ctx.rotate(0.2);
+        ctx.fillStyle = THEME.accent;
+        ctx.beginPath();
+        ctx.moveTo(-g*0.35, g*0.25);
+        ctx.lineTo(g*0.35, 0);
+        ctx.lineTo(-g*0.35, -g*0.25);
+        ctx.closePath();
+        ctx.fill();
+        // holes
+        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        [
+          {x:-6,y:-3,r:3}, {x:2,y:0,r:2}, {x:-2,y:6,r:2.5}
+        ].forEach(h=>{ ctx.beginPath(); ctx.arc(h.x,h.y,h.r,0,Math.PI*2); ctx.fill(); });
+        ctx.restore();
+      },
+      drawField(){
+        const field = this.fieldRect();
+        fillCard(field.x-8, field.y-8, field.w+16, field.h+16, '#161c2a');
+        // grid
+        ctx.strokeStyle = '#2a334a'; ctx.lineWidth = 1;
+        for(let c=0;c<=this.cols;c++){ ctx.beginPath(); ctx.moveTo(field.x + c*this.grid, field.y); ctx.lineTo(field.x + c*this.grid, field.y+field.h); ctx.stroke(); }
+        for(let r=0;r<=this.rows;r++){ ctx.beginPath(); ctx.moveTo(field.x, field.y + r*this.grid); ctx.lineTo(field.x+field.w, field.y + r*this.grid); ctx.stroke(); }
+      },
+      draw(){
+        gradientBackground();
+        drawText('Mouse & Cheese — vocab runner', innerWidth/2, 60, 38, THEME.accent, 'center');
+        drawText('Arrow keys to move · Click the field to start · R=repeat word · M=mute', innerWidth/2, 88, 16, THEME.subtle, 'center');
+        this.drawField();
+        // cheese
+        this.drawCheese();
+        // mouse
+        this.mouse.forEach((p,i)=> this.drawMouseCell(p.x,p.y));
+        // face on head
+        if(this.mouse.length){
+          const head = this.mouse[0]; const cell = {x: head.x*this.grid + this.fieldRect().x, y: head.y*this.grid + this.fieldRect().y};
+          const g = this.grid;
+          // ears
+          ctx.fillStyle = '#d9deff';
+          ctx.beginPath(); ctx.arc(cell.x+g*0.75, cell.y+g*0.35, g*0.15, 0, Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.arc(cell.x+g*0.25, cell.y+g*0.35, g*0.15, 0, Math.PI*2); ctx.fill();
+          // eyes
+          ctx.fillStyle = '#0c0e14';
+          ctx.beginPath(); ctx.arc(cell.x+g*0.35, cell.y+g*0.55, 2.5, 0, Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.arc(cell.x+g*0.65, cell.y+g*0.55, 2.5, 0, Math.PI*2); ctx.fill();
+          // nose
+          ctx.fillStyle = THEME.accent2; ctx.beginPath(); ctx.arc(cell.x+g*0.5, cell.y+g*0.75, 2.2, 0, Math.PI*2); ctx.fill();
+        }
+        // HUD
+        const d = ensureDay(todayStr());
+        fillCard(innerWidth-260, 24, 236, 72, '#1b2130');
+        drawText(`Score: ${this.score}`, innerWidth-240, 50, 20);
+        drawText(`Cheese today: ${d.cheeses}`, innerWidth-240, 80, 16, THEME.subtle);
+        if(!this.play){
+          drawText('Click inside the field to start!', innerWidth/2, this.fieldRect().y + this.fieldRect().h/2, 22, THEME.accent3, 'center');
+          if(lastSpoken){ drawText(`Last word: “${lastSpoken.es}” = ${lastSpoken.en} (R to repeat)`, innerWidth/2, this.fieldRect().y + this.fieldRect().h/2 + 32, 16, THEME.subtle, 'center'); }
+        }
+        this.buttons.forEach(b=>b.draw());
+        if(!this.play && this.score>0){ drawText('Game over — press inside field to play again', innerWidth/2, this.fieldRect().y + this.fieldRect().h - 10, 16, THEME.accent2, 'center','alphabetic'); }
+      }
+    };
+
+    // ====== Progress Scene ======
+    const ProgressScene = {
+      buttons: [],
+      init(){
+        this.buttons=[ new Button(24,24,120,44,'⟵ Menu', THEME.accent2, ()=>{ commitMinutes(); setScene(MenuScene); }) ];
+      },
+      update(){ if(input.clicked) this.buttons.forEach(b=>b.update()); },
+      draw(){
+        gradientBackground();
+        drawText('Progress', innerWidth/2, 60, 42, THEME.accent, 'center');
+        const w = Math.min(900, innerWidth-80), h = 300, x = innerWidth/2 - w/2, y = 110;
+        fillCard(x,y,w,h,'#1b2130');
+        // Last 7 days bar chart of minutes
+        const dates = Object.keys(store.days).sort().slice(-7);
+        const mins = dates.map(d=>store.days[d].minutes||0);
+        const maxM = Math.max(20, ...mins);
+        const barW = (w-100)/7, base = y+h-50;
+        drawText('Minutes studied — last 7 days', x+20, y+30, 18, THEME.subtle);
+        dates.forEach((d,i)=>{
+          const m = mins[i]; const bh = Math.max(4, (m/maxM)*(h-100));
+          const bx = x+50 + i*barW + 8;
+          roundRect(bx, base-bh, barW-16, bh, 8); ctx.fillStyle=THEME.accent; ctx.fill();
+          drawText(d.slice(5), bx+(barW-16)/2, base+18, 12, THEME.subtle, 'center');
+          drawText(Math.round(m).toString(), bx+(barW-16)/2, base-bh-6, 12, THEME.text, 'center','alphabetic');
+        });
+        // Totals
+        const d = ensureDay(todayStr());
+        fillCard(x, y+h+20, w, 110, '#1b2130');
+        drawText(`Streak: ${store.streak} days`, x+24, y+h+60, 20);
+        drawText(`Today — ${Math.round(d.minutes)} min • ${d.flashSeen} cards • ${d.quizCorrect}/${d.quizTotal} quiz • ${d.cheeses} cheese • ${d.wordsHeard.length} words heard`, x+24, y+h+90, 16, THEME.subtle);
+        this.buttons.forEach(b=>b.draw());
+      }
+    };
+
+    // ====== App Loop ======
+    function update(){ if(Scene.current && Scene.current.update) Scene.current.update(); input.clicked=false; }
+    function draw(){ if(Scene.current && Scene.current.draw) Scene.current.draw(); }
+    function loop(){ update(); draw(); requestAnimationFrame(loop); }
+
+    // Start app
+    MenuScene.init(); FlashScene.init(); QuizScene.init(); GameScene.init(); ProgressScene.init();
+    setScene(MenuScene);
+    loop();
+
+    // Global: Esc returns to menu
+    window.addEventListener('keydown', e=>{ if(e.key==='Escape'){ commitMinutes(); setScene(MenuScene);} });
+
+  })();
+  </script>
+</body>
+</html>

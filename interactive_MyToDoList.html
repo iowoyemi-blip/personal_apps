@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .todo-item-enter {
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .todo-item-enter-active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 antialiased">
+    <div class="container mx-auto max-w-md mt-12 p-6 bg-white rounded-xl shadow-lg">
+        <h1 class="text-3xl font-bold mb-6 text-center text-gray-900">My To-Do List</h1>
+        <div class="flex mb-4">
+            <input type="text" id="todo-input" class="flex-grow p-3 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="Add a new task...">
+            <button id="add-btn" class="bg-blue-500 text-white px-6 py-3 rounded-r-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 transform hover:scale-105">Add</button>
+        </div>
+        <ul id="todo-list" class="space-y-3">
+            <!-- To-do items will be inserted here -->
+        </ul>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const todoInput = document.getElementById('todo-input');
+            const addBtn = document.getElementById('add-btn');
+            const todoList = document.getElementById('todo-list');
+
+            // Initialize todos from localStorage or create a default list
+            let todos = JSON.parse(localStorage.getItem('todos')) || [
+                { text: 'Learn Tailwind CSS', completed: true },
+                { text: 'Create a to-do app', completed: false },
+            ]; // FIX: Removed extra ']' which caused the syntax error
+
+            // Function to save todos to localStorage
+            const saveTodos = () => {
+                localStorage.setItem('todos', JSON.stringify(todos));
+            };
+
+            // Function to render todos to the UI
+            const renderTodos = () => {
+                todoList.innerHTML = ''; // Clear the list before re-rendering
+                if (todos.length === 0) {
+                    todoList.innerHTML = `<li class="text-center text-gray-500 p-4">Your list is empty!</li>`;
+                    return;
+                }
+
+                todos.forEach((todo, index) => {
+                    const li = document.createElement('li');
+                    // Apply styles based on completion status
+                    li.className = `flex items-center justify-between p-3 rounded-lg transition-all duration-300 cursor-pointer ${todo.completed ? 'bg-green-100 text-gray-500 line-through' : 'bg-gray-50 hover:bg-gray-200'}`;
+                    
+                    li.innerHTML = `
+                        <span class="flex-grow">${todo.text}</span>
+                        <button class="delete-btn text-red-400 hover:text-red-600 ml-4 font-bold transition-colors">✕</button>
+                    `;
+                    
+                    // Add a little animation on creation
+                    li.classList.add('todo-item-enter');
+                    setTimeout(() => li.classList.add('todo-item-enter-active'), 10);
+
+                    // Event listener to toggle completion
+                    li.querySelector('span').addEventListener('click', () => {
+                        todos[index].completed = !todos[index].completed;
+                        saveTodos();
+                        renderTodos();
+                    });
+
+                    // Event listener for the delete button
+                    li.querySelector('.delete-btn').addEventListener('click', (e) => {
+                        e.stopPropagation(); // Prevent the li click event from firing
+                        todos.splice(index, 1);
+                        saveTodos();
+                        renderTodos();
+                    });
+
+                    todoList.appendChild(li);
+                });
+            };
+            
+            // Function to add a new todo
+            const addTodo = () => {
+                const text = todoInput.value.trim();
+                if (text !== '') {
+                    todos.push({ text: text, completed: false });
+                    todoInput.value = '';
+                    saveTodos();
+                    renderTodos();
+                }
+            };
+
+            // Event listener for the add button
+            addBtn.addEventListener('click', addTodo);
+
+            // Event listener for pressing 'Enter' in the input field
+            todoInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    addTodo();
+                }
+            });
+
+            // Initial render of the to-do list
+            renderTodos();
+        });
+    </script>
+</body>
+</html>

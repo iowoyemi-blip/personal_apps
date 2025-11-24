@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Budget Buddy — Standalone (Encrypted + Auto-Backup)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Tailwind (Play CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 + ReactDOM (UMD) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- Babel for JSX in the browser -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Chart.js for the pie chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Papa Parse for CSV -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <style>
+    /* Minimal custom styles */
+    .card { background:#fff; border:1px solid #e5e7eb; border-radius:1rem; box-shadow:0 1px 2px rgba(0,0,0,0.04); }
+    .btn { display:inline-flex; align-items:center; gap:.5rem; padding:.5rem .75rem; border:1px solid #cbd5e1; border-radius:.75rem; background:#fff; cursor:pointer; }
+    .btn:hover { background:#f8fafc; }
+    .btn-primary { background:#0f172a; color:#fff; border-color:#0f172a; }
+    .btn-primary:hover { background:#111827; }
+    .input, .select { width:100%; border:1px solid #cbd5e1; border-radius:.75rem; padding:.5rem .75rem; background:#fff; }
+    .table { width:100%; font-size:.9rem; }
+    .th { text-align:left; font-weight:600; color:#475569; border-bottom:1px solid #e5e7eb; padding:.5rem 0; }
+    .td { border-bottom:1px solid #f1f5f9; padding:.5rem 0; }
+    .pill { padding:.25rem .5rem; border-radius:.5rem; font-size:.8rem; background:#f1f5f9; }
+    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.35); backdrop-filter: blur(2px); display:flex; align-items:center; justify-content:center; padding:1rem; }
+    .modal { width:100%; max-width:48rem; }
+    .overflow-auto-x { overflow-x:auto; }
+    .nowrap { white-space:nowrap; }
+  </style>
+</head>
+<body class="bg-gradient-to-b from-slate-50 to-white min-h-screen">
+  <div id="root" class="p-6"></div>
+
+  <script type="text/babel">
+    const { useEffect, useMemo, useRef, useState } = React;
+
+    // Currency formatter
+    const fmt = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" });
+
+    const defaultCategories = [
+      { id: "housing", name: "Housing" },
+      { id: "utilities", name: "Utilities" },
+      { id: "transport", name: "Transport" },
+      { id: "groceries", name: "Groceries" },
+      { id: "health", name: "Health" },
+      { id: "entertainment", name: "Entertainment" },
+      { id: "giving", name: "Giving" },
+      { id: "savings", name: "Savings" },
+      { id: "other", name: "Other" },
+    ];
+
+    function uid() {
+      if (crypto && crypto.randomUUID) return crypto.randomUUID();
+      return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+    }
+
+    function slugify(s) {
+      return (s || "").toString().trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9\-]/g, "");
+    }
+
+    function useLocalStorage(key, initial) {
+      const [value, setValue] = useState(() => {
+        try {
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : initial;
+        } catch {
+          return initial;
+        }
+      });
+      useEffect(() => {
+        try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+      }, [key, value]);
+      return [value, setValue];
+    }
+
+    // Date normalization → YYYY-MM-DD
+    function normalizeDate(input) {
+      if (!input) return "";
+      const s = String(input).trim();
+      if (/^\d{4}-\d{1,2}-\d{1,2}/.test(s)) {
+        const d = new Date(s);
+        if (!isNaN(d.getTime())) return d.toISOString().slice(0,10);
+      }
+      const m = s.match(/^(\d{1,4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,4})$/);
+      if (m) {
+        let a = parseInt(m[1],10), b = parseInt(m[2],10), c = parseInt(m[3],10);
+        let year, month, day;
+        if (a > 31) { year = a; month = b; day = c; }
+        else if (c > 31) { year = c; month = a; day = b; }
+        else { year = a; month = b; day = c; }
+        const dt = new Date(year, month-1, day);
+        if (!isNaN(dt.getTime())) return dt.toISOString().slice(0,10);
+      }
+      const d = new Date(s);
+      if (!isNaN(d.getTime())) return d.toISOString().slice(0,10);
+      return "";
+    }
+
+    // --- Crypto helpers (AES-GCM + PBKDF2) ---
+    async function deriveKey(password, salt) {
+      const enc = new TextEncoder();
+      const baseKey = await crypto.subtle.importKey(
+        "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]
+      );
+      return crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+        baseKey,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+      );
+    }
+    const b64 = {
+      enc: (arrbuf) => btoa(String.fromCharCode(...new Uint8Array(arrbuf))),
+      dec: (b64str) => Uint8Array.from(atob(b64str), c => c.charCodeAt(0)).buffer
+    };
+
+    function App() {
+      const [categories, setCategories] = useLocalStorage("bb.categories", defaultCategories);
+      const [envelopes, setEnvelopes]   = useLocalStorage("bb.envelopes", []);
+      const [txns, setTxns]             = useLocalStorage("bb.txns", []);
+      const [income, setIncome]         = useLocalStorage("bb.income", 0);
+      const [tab, setTab]               = useState("plan");
+      const [editIncomeOpen, setEditIncomeOpen] = useState(false);
+      const [tmpIncome, setTmpIncome]   = useState(income || 0);
+
+      // CSV modal state
+      const [csvOpen, setCsvOpen] = useState(false);
+      const [csvPreview, setCsvPreview] = useState({ headers: [], rows: [] });
+      const [csvMapping, setCsvMapping] = useState({
+        date: "", payee: "", amount: "", category: "",
+        negativeAsSpend: true,
+        createMissingCategories: true,
+        defaultCategory: "other",
+        skipHeaderRow: true
+      });
+
+      // Auto-backup banner
+      const [backupInfo, setBackupInfo] = useState(null);
+
+      // Derived data
+      const plannedByCat = useMemo(() => {
+        const m = Object.fromEntries(categories.map(c => [c.id, 0]));
+        for (const e of envelopes) m[e.category] = (m[e.category] || 0) + Number(e.amount || 0);
+        return m;
+      }, [envelopes, categories]);
+
+      const spentByCat = useMemo(() => {
+        const m = Object.fromEntries(categories.map(c => [c.id, 0]));
+        for (const t of txns) m[t.category] = (m[t.category] || 0) + Number(t.amount || 0);
+        return m;
+      }, [txns, categories]);
+
+      const remainingRows = useMemo(() => categories.map(c => ({
+        id: c.id,
+        name: c.name,
+        planned: plannedByCat[c.id] || 0,
+        spent: spentByCat[c.id] || 0,
+        left: (plannedByCat[c.id] || 0) - (spentByCat[c.id] || 0),
+      })), [categories, plannedByCat, spentByCat]);
+
+      const totalPlanned = useMemo(() => envelopes.reduce((s,e)=>s+Number(e.amount||0),0), [envelopes]);
+      const totalSpent   = useMemo(() => txns.reduce((s,t)=>s+Number(t.amount||0),0), [txns]);
+
+      // ---------- Import/Export (JSON - plain) ----------
+      function currentSnapshot() {
+        return { categories, envelopes, transactions: txns, monthlyIncome: income };
+      }
+      function exportData() {
+        const blob = new Blob([JSON.stringify(currentSnapshot(), null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `budget-${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      function importData(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const data = JSON.parse(reader.result);
+            if (data.categories) setCategories(data.categories);
+            if (data.envelopes) setEnvelopes(data.envelopes);
+            if (data.transactions) setTxns(data.transactions);
+            if (typeof data.monthlyIncome === "number") setIncome(data.monthlyIncome);
+            alert("Import complete.");
+          } catch {
+            alert("Invalid file.");
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      // ---------- Encrypted Export/Import ----------
+      async function exportEncrypted() {
+        const password = prompt("Set a password to encrypt your backup:");
+        if (!password) return;
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const key = await deriveKey(password, salt);
+        const enc = new TextEncoder();
+        const data = enc.encode(JSON.stringify(currentSnapshot()));
+        try {
+          const cipher = await crypto.subtle.encrypt({ name:"AES-GCM", iv }, key, data);
+          const pkg = {
+            v: 1,
+            algo: "AES-GCM",
+            kdf: "PBKDF2",
+            iter: 100000,
+            salt: b64.enc(salt.buffer),
+            iv: b64.enc(iv.buffer),
+            cipher: b64.enc(cipher)
+          };
+          const blob = new Blob([JSON.stringify(pkg)], { type: "application/octet-stream" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `budget-encrypted-${new Date().toISOString().slice(0,10)}.bbx`;
+          a.click();
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          alert("Encryption failed.");
+        }
+      }
+
+      async function importEncrypted(file) {
+        if (!file) return;
+        const text = await file.text();
+        try {
+          const pkg = JSON.parse(text);
+          if (!pkg || !pkg.salt || !pkg.iv || !pkg.cipher) throw new Error("Bad package");
+          const password = prompt("Enter the password to decrypt:");
+          if (!password) return;
+          const salt = b64.dec(pkg.salt);
+          const iv = b64.dec(pkg.iv);
+          const key = await deriveKey(password, new Uint8Array(salt));
+          const cipher = b64.dec(pkg.cipher);
+          const plain = await crypto.subtle.decrypt({ name:"AES-GCM", iv:new Uint8Array(iv) }, key, cipher);
+          const dec = new TextDecoder().decode(plain);
+          const data = JSON.parse(dec);
+          if (data.categories) setCategories(data.categories);
+          if (data.envelopes) setEnvelopes(data.envelopes);
+          if (data.transactions) setTxns(data.transactions);
+          if (typeof data.monthlyIncome === "number") setIncome(data.monthlyIncome);
+          alert("Encrypted import complete.");
+        } catch (e) {
+          alert("Decryption failed. Wrong password or corrupted file.");
+        }
+      }
+
+      // ---------- CSV handling ----------
+      function openCsvDialog() {
+        setCsvPreview({ headers: [], rows: [] });
+        setCsvMapping(m => ({
+          ...m,
+          date: "", payee: "", amount: "", category: "",
+          defaultCategory: categories[0]?.id || "other"
+        }));
+        setCsvOpen(true);
+      }
+
+      function handleCsvFile(file) {
+        if (!file) return;
+        Papa.parse(file, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (res) => {
+            const headers = res.meta.fields || [];
+            const rows = res.data.slice(0, 50); // preview up to 50
+            setCsvPreview({ headers, rows });
+            const auto = autoDetectMapping(headers);
+            setCsvMapping(m => ({ ...m, ...auto }));
+          },
+          error: () => alert("Could not parse CSV.")
+        });
+      }
+
+      function autoDetectMapping(headers) {
+        const h = headers.map(x => (x || "").toString().toLowerCase());
+        function findOne(keys) {
+          for (const k of keys) {
+            const idx = h.findIndex(x => x.includes(k));
+            if (idx >= 0) return headers[idx];
+          }
+          return "";
+        }
+        return {
+          date: findOne(["date", "posted", "transaction date"]),
+          payee: findOne(["description", "payee", "memo", "name", "details"]),
+          amount: findOne(["amount", "amt", "value"]),
+          category: findOne(["category", "type"])
+        };
+      }
+
+      function commitCsvImport() {
+        if (!csvPreview.headers.length || !csvPreview.rows.length) {
+          alert("No CSV data to import.");
+          return;
+        }
+        if (!csvMapping.date || !csvMapping.amount) {
+          alert("Please map at least Date and Amount columns.");
+          return;
+        }
+
+        const nameToId = {};
+        for (const c of categories) nameToId[c.name.toLowerCase()] = c.id;
+
+        const newTxns = [];
+        const newCategories = [...categories];
+
+        for (const row of csvPreview.rows) {
+          const rawDate = row[csvMapping.date];
+          const payee = csvMapping.payee ? (row[csvMapping.payee] || "") : "";
+          let amount = Number(String(row[csvMapping.amount] ?? "").replace(/[^0-9\-\.\,]/g, '').replace(',', '.'));
+          if (isNaN(amount)) continue;
+          if (csvMapping.negativeAsSpend && amount < 0) amount = Math.abs(amount);
+
+          let categoryId = csvMapping.defaultCategory || "other";
+          if (csvMapping.category && row[csvMapping.category]) {
+            const name = String(row[csvMapping.category]).trim();
+            const existingId = nameToId[name.toLowerCase()];
+            if (existingId) {
+              categoryId = existingId;
+            } else if (csvMapping.createMissingCategories) {
+              const id = slugify(name) || "other";
+              if (!newCategories.some(c => c.id === id)) {
+                newCategories.push({ id, name });
+                nameToId[name.toLowerCase()] = id;
+              }
+              categoryId = nameToId[name.toLowerCase()] || id;
+            }
+          }
+
+          const date = normalizeDate(rawDate) || new Date().toISOString().slice(0,10);
+          newTxns.push({ id: uid(), date, payee, amount, category: categoryId });
+        }
+
+        if (newCategories.length !== categories.length) setCategories(newCategories);
+        if (newTxns.length) {
+          setTxns(prev => [...newTxns, ...prev]);
+          alert(`Imported ${newTxns.length} transactions.`);
+          setCsvOpen(false);
+        } else {
+          alert("No valid transactions found in CSV.");
+        }
+      }
+
+      // ---------- Auto-backup on exit + banner on load ----------
+      function saveAutoBackup() {
+        try {
+          const data = JSON.stringify(currentSnapshot());
+          const ts = new Date().toISOString();
+          localStorage.setItem("bb.autobackup.data", data);
+          localStorage.setItem("bb.autobackup.ts", ts);
+        } catch {}
+      }
+
+      useEffect(() => {
+        // Save backup when leaving or hiding the page
+        const onHide = () => saveAutoBackup();
+        window.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "hidden") onHide();
+        });
+        window.addEventListener("pagehide", onHide);
+        window.addEventListener("beforeunload", onHide);
+        return () => {
+          window.removeEventListener("pagehide", onHide);
+          window.removeEventListener("beforeunload", onHide);
+        };
+      }, [categories, envelopes, txns, income]);
+
+      useEffect(() => {
+        // Show banner if a backup exists
+        try {
+          const ts = localStorage.getItem("bb.autobackup.ts");
+          const data = localStorage.getItem("bb.autobackup.data");
+          if (ts && data) {
+            setBackupInfo({ ts, data });
+          }
+        } catch {}
+      }, []);
+
+      function downloadAutoBackup() {
+        if (!backupInfo) return;
+        const blob = new Blob([backupInfo.data], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `budget-autobackup-${backupInfo.ts.slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function restoreAutoBackup() {
+        if (!backupInfo) return;
+        try {
+          const data = JSON.parse(backupInfo.data);
+          if (data.categories) setCategories(data.categories);
+          if (data.envelopes) setEnvelopes(data.envelopes);
+          if (data.transactions) setTxns(data.transactions);
+          if (typeof data.monthlyIncome === "number") setIncome(data.monthlyIncome);
+          alert("Auto-backup restored.");
+        } catch {
+          alert("Backup restore failed.");
+        }
+      }
+
+      return (
+        <div className="max-w-6xl mx-auto space-y-6">
+          {/* Auto-backup banner */}
+          {backupInfo && (
+            <div className="card p-3 border-l-4 border-l-amber-500 bg-amber-50">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm">
+                  <span className="font-semibold">Auto-backup available</span>
+                  <span className="text-slate-600"> — last saved {new Date(backupInfo.ts).toLocaleString()}</span>
+                </div>
+                <div className="flex gap-2">
+                  <button className="btn" onClick={downloadAutoBackup}>Download</button>
+                  <button className="btn btn-primary" onClick={restoreAutoBackup}>Restore Now</button>
+                  <button className="btn" onClick={()=>setBackupInfo(null)}>Dismiss</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Header */}
+          <header className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Budget Buddy</h1>
+              <p className="text-sm text-slate-600">Zero-based budgeting with envelopes, transactions, and insights.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <label className="btn cursor-pointer">
+                <span>Import JSON</span>
+                <input type="file" accept="application/json" className="hidden" onChange={e=>importData(e.target.files?.[0])}/>
+              </label>
+              <button className="btn" onClick={exportData} title="Export JSON">Export JSON</button>
+
+              <label className="btn cursor-pointer">
+                <span>Import Encrypted</span>
+                <input type="file" accept=".bbx,application/octet-stream,application/json" className="hidden" onChange={e=>importEncrypted(e.target.files?.[0])}/>
+              </label>
+              <button className="btn btn-primary" onClick={exportEncrypted} title="Export Encrypted">Export Encrypted</button>
+
+              <button className="btn" onClick={openCsvDialog} title="Import transactions from CSV">
+                <span className="nowrap">Import CSV</span>
+              </button>
+            </div>
+          </header>
+
+          {/* Overview */}
+          <div className="grid md:grid-cols-4 gap-4">
+            <div className="card p-4">
+              <div className="text-sm text-slate-600">Monthly Income</div>
+              <div className="text-2xl font-semibold">{fmt.format(income || 0)}</div>
+              <button className="btn mt-2" onClick={()=>{ setTmpIncome(income || 0); setEditIncomeOpen(true); }}>Edit</button>
+            </div>
+            <Summary title="Planned" value={fmt.format(totalPlanned)} />
+            <Summary title="Spent" value={fmt.format(totalSpent)} />
+            <Summary title="Leftover" value={fmt.format((income || 0) - totalPlanned)} />
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-2">
+            <button className={"pill " + (tab==="plan" ? "bg-slate-900 text-white" : "")} onClick={()=>setTab("plan")}>Plan</button>
+            <button className={"pill " + (tab==="track" ? "bg-slate-900 text-white" : "")} onClick={()=>setTab("track")}>Track</button>
+            <button className={"pill " + (tab==="insights" ? "bg-slate-900 text-white" : "")} onClick={()=>setTab("insights")}>Insights</button>
+          </div>
+
+          {tab==="plan" && (
+            <div className="card p-4">
+              <h2 className="text-lg font-semibold mb-3">Envelopes</h2>
+              <EnvelopeEditor
+                categories={categories}
+                envelopes={envelopes}
+                setEnvelopes={setEnvelopes}
+              />
+            </div>
+          )}
+
+          {tab==="track" && (
+            <div className="card p-4">
+              <h2 className="text-lg font-semibold mb-3">Transactions</h2>
+              <TransactionEditor
+                categories={categories}
+                transactions={txns}
+                setTransactions={setTxns}
+              />
+            </div>
+          )}
+
+          {tab==="insights" && (
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="card p-4 overflow-auto-x">
+                <h2 className="text-lg font-semibold mb-3">Spending vs Plan</h2>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th className="th">Category</th>
+                      <th className="th text-right">Planned</th>
+                      <th className="th text-right">Spent</th>
+                      <th className="th text-right">Left</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {remainingRows.map(r => (
+                      <tr key={r.id} className={r.left < 0 ? "bg-rose-50" : ""}>
+                        <td className="td">{r.name}</td>
+                        <td className="td text-right">{fmt.format(r.planned)}</td>
+                        <td className="td text-right">{fmt.format(r.spent)}</td>
+                        <td className="td text-right">{fmt.format(r.left)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="card p-4">
+                <h2 className="text-lg font-semibold mb-3">Category Breakdown</h2>
+                <PieChart data={categories.map(c => ({name: c.name, value: plannedByCat[c.id] || 0}))}/>
+              </div>
+            </div>
+          )}
+
+          <div className="card p-4">
+            <h2 className="text-lg font-semibold mb-3">Categories</h2>
+            <CategoryManager categories={categories} setCategories={setCategories} />
+          </div>
+
+          <footer className="text-xs text-slate-500 text-center pt-2 pb-6">
+            All data is stored locally in your browser. Auto-backup runs on exit. Encrypted export uses AES-GCM with PBKDF2 (100k iterations).
+          </footer>
+
+          {/* Income dialog */}
+          {editIncomeOpen && (
+            <div className="modal-backdrop">
+              <div className="card p-6 w-full max-w-sm">
+                <h3 className="text-lg font-semibold mb-3">Set Monthly Income</h3>
+                <label className="text-sm text-slate-600">Income</label>
+                <input className="input mt-1" type="number" value={tmpIncome} onChange={e=>setTmpIncome(Number(e.target.value))}/>
+                <div className="flex justify-end gap-2 mt-4">
+                  <button className="btn" onClick={()=>setEditIncomeOpen(false)}>Cancel</button>
+                  <button className="btn btn-primary" onClick={()=>{ setIncome(Number(tmpIncome)||0); setEditIncomeOpen(false); }}>
+                    Save
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CSV Import dialog */}
+          {csvOpen && (
+            <div className="modal-backdrop">
+              <div className="card modal p-6">
+                <div className="flex items-start justify-between">
+                  <h3 className="text-lg font-semibold">Import Transactions from CSV</h3>
+                  <button className="btn" onClick={()=>setCsvOpen(false)}>Close</button>
+                </div>
+
+                <div className="mt-4 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <input type="file" accept=".csv,text/csv" onChange={e=>handleCsvFile(e.target.files?.[0])}/>
+                    <span className="text-slate-500 text-sm">Tip: include a header row (Date, Description, Amount, Category).</span>
+                  </div>
+
+                  {csvPreview.headers.length > 0 && (
+                    <>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm text-slate-600">Date column</label>
+                          <select className="select mt-1" value={csvMapping.date} onChange={e=>setCsvMapping(m=>({...m, date: e.target.value}))}>
+                            <option value="">— Select —</option>
+                            {csvPreview.headers.map(h => <option key={h} value={h}>{h}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-sm text-slate-600">Amount column</label>
+                          <select className="select mt-1" value={csvMapping.amount} onChange={e=>setCsvMapping(m=>({...m, amount: e.target.value}))}>
+                            <option value="">— Select —</option>
+                            {csvPreview.headers.map(h => <option key={h} value={h}>{h}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-sm text-slate-600">Payee/Description column (optional)</label>
+                          <select className="select mt-1" value={csvMapping.payee} onChange={e=>setCsvMapping(m=>({...m, payee: e.target.value}))}>
+                            <option value="">— None —</option>
+                            {csvPreview.headers.map(h => <option key={h} value={h}>{h}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-sm text-slate-600">Category column (optional)</label>
+                          <select className="select mt-1" value={csvMapping.category} onChange={e=>setCsvMapping(m=>({...m, category: e.target.value}))}>
+                            <option value="">— None —</option>
+                            {csvPreview.headers.map(h => <option key={h} value={h}>{h}</option>)}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" checked={csvMapping.negativeAsSpend} onChange={e=>setCsvMapping(m=>({...m, negativeAsSpend: e.target.checked}))}/>
+                          <span className="text-sm">Treat negative amounts as spending (absolute value)</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" checked={csvMapping.createMissingCategories} onChange={e=>setCsvMapping(m=>({...m, createMissingCategories: e.target.checked}))}/>
+                          <span className="text-sm">Create missing categories from CSV</span>
+                        </label>
+                        <div>
+                          <label className="text-sm text-slate-600">Default category (if none)</label>
+                          <select className="select mt-1" value={csvMapping.defaultCategory} onChange={e=>setCsvMapping(m=>({...m, defaultCategory: e.target.value}))}>
+                            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="mt-2">
+                        <div className="text-sm font-semibold mb-2">Preview (first {csvPreview.rows.length} rows)</div>
+                        <div className="overflow-auto-x">
+                          <table className="table">
+                            <thead>
+                              <tr>{csvPreview.headers.map(h => <th className="th pr-4" key={h}>{h}</th>)}</tr>
+                            </thead>
+                            <tbody>
+                              {csvPreview.rows.slice(0,10).map((r, i) => (
+                                <tr key={i}>
+                                  {csvPreview.headers.map(h => <td className="td pr-4" key={h + i}>{String(r[h] ?? "")}</td>)}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2">
+                        <button className="btn" onClick={()=>setCsvOpen(false)}>Cancel</button>
+                        <button className="btn btn-primary" onClick={commitCsvImport}>Import Transactions</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function Summary({ title, value }) {
+      return (
+        <div className="card p-4">
+          <div className="text-sm text-slate-600">{title}</div>
+          <div className="text-2xl font-semibold">{value}</div>
+        </div>
+      );
+    }
+
+    function CategoryManager({ categories, setCategories }) {
+      const [name, setName] = useState("");
+      function add() {
+        const n = name.trim();
+        if (!n) return;
+        const id = slugify(n) || n;
+        if (categories.some(c => c.id === id)) return alert("Category exists.");
+        setCategories([...categories, { id, name: n }]);
+        setName("");
+      }
+      function remove(id) {
+        setCategories(categories.filter(c => c.id !== id));
+      }
+      return (
+        <div className="space-y-3">
+          <div className="grid md:grid-cols-3 gap-2">
+            <input className="input" placeholder="Add category (e.g., Childcare)" value={name} onChange={e=>setName(e.target.value)} />
+            <button className="btn btn-primary" onClick={add}>
+              <span>Add Category</span>
+            </button>
+          </div>
+          <div className="grid md:grid-cols-3 gap-2">
+            {categories.map(c => (
+              <div key={c.id} className="flex items-center justify-between p-2 border border-slate-200 rounded-xl">
+                <span>{c.name}</span>
+                <button className="btn" onClick={()=>remove(c.id)} title="Remove">Remove</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function EnvelopeEditor({ categories, envelopes, setEnvelopes }) {
+      const [amount, setAmount] = useState("");
+      const [category, setCategory] = useState(categories[0]?.id || "");
+      function add() {
+        if (!amount || !category) return;
+        setEnvelopes([...envelopes, { id: uid(), category, amount: Number(amount) }]);
+        setAmount("");
+      }
+      function remove(id) { setEnvelopes(envelopes.filter(e => e.id !== id)); }
+      const total = useMemo(() => envelopes.reduce((s,e)=>s+Number(e.amount||0),0), [envelopes]);
+
+      useEffect(() => {
+        if (!categories.some(c => c.id === category) && categories[0]) {
+          setCategory(categories[0].id);
+        }
+      }, [categories]);
+
+      return (
+        <div className="space-y-3">
+          <div className="grid md:grid-cols-4 gap-2">
+            <select className="select" value={category} onChange={e=>setCategory(e.target.value)}>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <input className="input" type="number" placeholder="Amount" value={amount} onChange={e=>setAmount(e.target.value)} />
+            <button className="btn btn-primary" onClick={add}>Add Envelope</button>
+            <div className="text-sm self-center text-slate-500">Total Planned: <span className="font-medium">{fmt.format(total)}</span></div>
+          </div>
+          <div className="overflow-auto-x">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th className="th">Category</th>
+                  <th className="th text-right">Amount</th>
+                  <th className="th"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {envelopes.map(e => (
+                  <tr key={e.id}>
+                    <td className="td">{categories.find(c=>c.id===e.category)?.name || e.category}</td>
+                    <td className="td text-right">{fmt.format(e.amount)}</td>
+                    <td className="td text-right">
+                      <button className="btn" onClick={()=>remove(e.id)}>Remove</button>
+                    </td>
+                  </tr>
+                ))}
+                {envelopes.length===0 && (
+                  <tr><td className="td text-slate-500" colSpan="3">No envelopes yet. Add your first above.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    function TransactionEditor({ categories, transactions, setTransactions }) {
+      const [form, setForm] = useState({
+        date: new Date().toISOString().slice(0,10),
+        payee: "",
+        amount: "",
+        category: categories[0]?.id || ""
+      });
+
+      function add() {
+        if (!form.amount || !form.category) return;
+        const record = { id: uid(), ...form, amount: Number(form.amount) };
+        setTransactions([record, ...transactions]);
+        setForm({ ...form, payee: "", amount: "" });
+      }
+      function remove(id) { setTransactions(transactions.filter(t => t.id !== id)); }
+
+      useEffect(() => {
+        if (!categories.some(c => c.id === form.category) && categories[0]) {
+          setForm(f => ({ ...f, category: categories[0].id }));
+        }
+      }, [categories]);
+
+      return (
+        <div className="space-y-3">
+          <div className="grid md:grid-cols-5 gap-2">
+            <input className="input" type="date" value={form.date} onChange={e=>setForm({...form, date: e.target.value})} />
+            <input className="input" placeholder="Payee / Note" value={form.payee} onChange={e=>setForm({...form, payee: e.target.value})} />
+            <select className="select" value={form.category} onChange={e=>setForm({...form, category: e.target.value})}>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <input className="input" type="number" placeholder="Amount" value={form.amount} onChange={e=>setForm({...form, amount: e.target.value})} />
+            <button className="btn btn-primary" onClick={add}>Add</button>
+          </div>
+
+          <div className="overflow-auto-x">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th className="th">Date</th>
+                  <th className="th">Payee</th>
+                  <th className="th">Category</th>
+                  <th className="th text-right">Amount</th>
+                  <th className="th"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map(t => (
+                  <tr key={t.id}>
+                    <td className="td">{t.date}</td>
+                    <td className="td">{t.payee}</td>
+                    <td className="td">{categories.find(c=>c.id===t.category)?.name || t.category}</td>
+                    <td className="td text-right">{fmt.format(t.amount)}</td>
+                    <td className="td text-right"><button className="btn" onClick={()=>remove(t.id)}>Remove</button></td>
+                  </tr>
+                ))}
+                {transactions.length===0 && (
+                  <tr><td className="td text-slate-500" colSpan="5">No transactions yet.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    function PieChart({ data }) {
+      const canvasRef = useRef(null);
+      const chartRef = useRef(null);
+
+      useEffect(() => {
+        const ctx = canvasRef.current.getContext("2d");
+        if (chartRef.current) {
+          chartRef.current.destroy();
+        }
+        const filtered = data.filter(d => d.value > 0);
+        const labels = filtered.map(d => d.name);
+        const values = filtered.map(d => d.value);
+
+        chartRef.current = new Chart(ctx, {
+          type: "pie",
+          data: {
+            labels,
+            datasets: [{ data: values }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { position: "bottom" },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => `${ctx.label}: ${fmt.format(ctx.parsed)}`
+                }
+              }
+            }
+          }
+        });
+
+        return () => { if (chartRef.current) chartRef.current.destroy(); };
+      }, [JSON.stringify(data)]);
+
+      return <canvas ref={canvasRef} height="220"></canvas>;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>

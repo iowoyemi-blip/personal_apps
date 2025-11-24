@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pomodoro Timer</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: linear-gradient(135deg, #FF5F6D 0%, #FFC371 100%);
+      color: #fff;
+    }
+    .timer-container {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      max-width: 360px;
+      width: 100%;
+    }
+    h1 {
+      margin: 0;
+      font-size: 2.5em;
+      text-shadow: 0 2px 5px rgba(0,  0, 0, 0.3);
+    }
+    p.subtitle {
+      margin: 10px 0 20px;
+      font-size: 1.2em;
+      opacity: 0.9;
+    }
+    .progress-ring {
+      position: relative;
+      width: 240px;
+      height: 240px;
+      margin: 0 auto;
+    }
+    .progress-ring__background {
+      fill: transparent;
+      stroke: rgba(255, 255, 255, 0.3);
+      stroke-width: 12;
+    }
+    .progress-ring__circle {
+      fill: transparent;
+      stroke: #fff;
+      stroke-width: 12;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+      transition: stroke-dashoffset 1s linear;
+    }
+    .time-display {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2.5em;
+      font-weight: bold;
+    }
+    #session-label {
+      margin-top: 20px;
+      font-size: 1.5em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    #session-count {
+      margin-top: 10px;
+      font-size: 1em;
+      opacity: 0.9;
+    }
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+    }
+    .controls button {
+      border: none;
+      padding: 12px 24px;
+      border-radius: 50px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s;
+    }
+    .controls button:active {
+      transform: scale(0.95);
+    }
+    #start {
+      background: linear-gradient(135deg, #56ab2f, #a8e063);
+      color: #fff;
+    }
+    #pause {
+      background: linear-gradient(135deg, #FF7E5F, #feb47b);
+      color: #fff;
+    }
+    #reset {
+      background: linear-gradient(135deg, #36D1DC, #5B86E5);
+      color: #fff;
+    }
+    .session-toggle {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    .session-toggle button {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      padding: 10px 20px;
+      border-radius: 50px;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .session-toggle button.active {
+      background: rgba(255, 255, 255, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div class="timer-container">
+    <h1>Pomodoro Timer</h1>
+    <p class="subtitle">Focus on your work with timed intervals</p>
+    <div class="progress-ring">
+      <svg width="240" height="240">
+        <circle class="progress-ring__background" r="108" cx="120" cy="120" />
+        <circle class="progress-ring__circle" r="108" cx="120" cy="120" />
+      </svg>
+      <div id="time-display" class="time-display">25:00</div>
+    </div>
+    <div id="session-label">Work Session</div>
+    <div id="session-count">Sessions completed: 0</div>
+    <div class="controls">
+      <button id="start">Start</button>
+      <button id="pause">Pause</button>
+      <button id="reset">Reset</button>
+    </div>
+    <div class="session-toggle">
+      <button id="work-btn" class="active">Work</button>
+      <button id="break-btn">Break</button>
+    </div>
+  </div>
+  <script>
+    const workDuration = 25 * 60;
+    const breakDuration = 5 * 60;
+    let isWorkSession = true;
+    let remainingTime = workDuration;
+    let interval = null;
+    let sessionsCompleted = 0;
+
+    const circle = document.querySelector('.progress-ring__circle');
+    const radius = circle.r.baseVal.value;
+    const circumference = 2 * Math.PI * radius;
+    circle.style.strokeDasharray = `${circumference} ${circumference}`;
+    circle.style.strokeDashoffset = circumference;
+
+    function setProgress(remaining, duration) {
+      const offset = circumference - (remaining / duration) * circumference;
+      circle.style.strokeDashoffset = offset;
+    }
+
+    function updateUI() {
+      const minutes = Math.floor(remainingTime / 60).toString().padStart(2, '0');
+      const seconds = (remainingTime % 60).toString().padStart(2, '0');
+      document.getElementById('time-display').textContent = `${minutes}:${seconds}`;
+      document.getElementById('session-label').textContent = isWorkSession ? 'Work Session' : 'Break Session';
+      document.getElementById('session-count').textContent = `Sessions completed: ${sessionsCompleted}`;
+      setProgress(remainingTime, isWorkSession ? workDuration : breakDuration);
+      document.getElementById('work-btn').classList.toggle('active', isWorkSession);
+      document.getElementById('break-btn').classList.toggle('active', !isWorkSession);
+    }
+
+    function startTimer() {
+      if (interval) return;
+      interval = setInterval(() => {
+        remainingTime--;
+        updateUI();
+        if (remainingTime <= 0) {
+          clearInterval(interval);
+          interval = null;
+          if (isWorkSession) sessionsCompleted++;
+          isWorkSession = !isWorkSession;
+          remainingTime = isWorkSession ? workDuration : breakDuration;
+          updateUI();
+        }
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    }
+
+    function resetTimer() {
+      clearInterval(interval);
+      interval = null;
+      remainingTime = isWorkSession ? workDuration : breakDuration;
+      updateUI();
+    }
+
+    function switchSession(work) {
+      clearInterval(interval);
+      interval = null;
+      isWorkSession = work;
+      remainingTime = isWorkSession ? workDuration : breakDuration;
+      updateUI();
+    }
+
+    document.getElementById('start').addEventListener('click', startTimer);
+    document.getElementById('pause').addEventListener('click', pauseTimer);
+    document.getElementById('reset').addEventListener('click', resetTimer);
+    document.getElementById('work-btn').addEventListener('click', () => switchSession(true));
+    document.getElementById('break-btn').addEventListener('click', () => switchSession(false));
+
+    updateUI();
+  </script>
+</body>
+</html>
