@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verse Memorizer - Multi-Level</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .blank-input {
+            width: 100px; /* Made slightly narrower for mobile */
+            border: none;
+            border-bottom: 2px solid #94a3b8; /* slate-400 */
+            background-color: transparent;
+            text-align: center;
+            font-weight: 500;
+            border-radius: 0;
+            padding: 4px 2px;
+            margin: 0 4px;
+            transition: all 0.2s ease-in-out;
+        }
+        .blank-input:focus {
+            outline: none;
+            border-bottom-color: #3b82f6; /* blue-500 */
+        }
+        .correct {
+            background-color: #dcfce7 !important; /* green-100 */
+            border-bottom-color: #22c55e !important; /* green-500 */
+        }
+        .incorrect {
+            background-color: #fee2e2 !important; /* red-100 */
+            border-bottom-color: #ef4444 !important; /* red-500 */
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-3xl mx-auto bg-white p-4 sm:p-6 md:p-8 rounded-2xl shadow-lg">
+
+        <div id="setup-screen">
+            <h1 class="text-2xl md:text-3xl font-bold text-center text-slate-700 mb-2">Verse Memorizer</h1>
+            <p class="text-center text-slate-500 mb-6">Paste your verse below to begin the challenge.</p>
+            
+            <textarea id="verse-input" rows="4" class="w-full p-4 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" placeholder="For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life."></textarea>
+            
+            <div id="setup-message-area" class="mt-4 text-center font-medium h-6 text-red-600"></div>
+
+            <button id="start-btn" class="w-full mt-2 bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-transform transform hover:scale-105">
+                Start Challenge
+            </button>
+        </div>
+
+        <div id="game-screen" class="hidden">
+            <div id="level-display" class="text-center text-lg font-bold text-blue-600 mb-2"></div>
+            <h2 class="text-xl md:text-2xl font-bold text-slate-700 mb-2 text-center">Fill in the Blanks</h2>
+            <p class="text-slate-500 mb-6 text-center">Type the missing words into the blank spaces below.</p>
+
+            <div id="verse-display" class="p-4 border border-slate-200 rounded-lg min-h-[120px] flex flex-wrap gap-x-1 gap-y-4 items-center text-lg md:text-xl leading-loose">
+                <!-- Verse with blanks will be injected here -->
+            </div>
+
+            <div id="message-area" class="mt-4 text-center font-medium h-6"></div>
+
+            <div class="flex flex-col sm:flex-row gap-3 mt-6">
+                <button id="check-btn" class="w-full sm:w-1/2 bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-transform transform hover:scale-105">Check Answer</button>
+                <button id="next-level-btn" class="w-full sm:w-1/2 bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-transform transform hover:scale-105 hidden">Next Level</button>
+                <button id="reset-btn" class="w-full sm:w-1/2 bg-slate-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-transform transform hover:scale-105">New Verse</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // DOM Elements
+        const setupScreen = document.getElementById('setup-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const verseInput = document.getElementById('verse-input');
+        const startBtn = document.getElementById('start-btn');
+        const levelDisplay = document.getElementById('level-display');
+        const verseDisplay = document.getElementById('verse-display');
+        const checkBtn = document.getElementById('check-btn');
+        const nextLevelBtn = document.getElementById('next-level-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const messageArea = document.getElementById('message-area');
+        const setupMessageArea = document.getElementById('setup-message-area');
+
+        // Game State
+        let originalVerseText = '';
+        let currentLevel = 1;
+        const levelPercentages = { 1: 0.25, 2: 0.50, 3: 0.75, 4: 0.90 };
+
+        // --- Event Listeners ---
+        startBtn.addEventListener('click', startGame);
+        resetBtn.addEventListener('click', resetGame);
+        checkBtn.addEventListener('click', checkAnswer);
+        nextLevelBtn.addEventListener('click', advanceLevel);
+
+        // --- Game Flow ---
+
+        function startGame() {
+            const verseText = verseInput.value.trim();
+            // Replaced alert with an inline message for better UX
+            if (verseText === "") {
+                setupMessageArea.textContent = "Please enter a verse to continue.";
+                return;
+            }
+            setupMessageArea.textContent = ""; // Clear message on success
+            originalVerseText = verseText;
+            currentLevel = 1;
+            setupLevel(currentLevel);
+            
+            setupScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+        }
+        
+        function setupLevel(level) {
+            // Update level display
+            levelDisplay.textContent = `Level ${level} of 4`;
+            messageArea.textContent = '';
+            
+            // Show/hide appropriate buttons
+            checkBtn.classList.remove('hidden');
+            nextLevelBtn.classList.add('hidden');
+
+            // Get words from the original verse
+            const originalVerseArray = originalVerseText.split(/\s+/).filter(word => word.length > 0);
+            const wordCount = originalVerseArray.length;
+            const percentage = levelPercentages[level];
+            const blanksCount = Math.max(1, Math.ceil(wordCount * percentage)); 
+            
+            // Create a shuffled array of indices to pick from randomly
+            const indices = Array.from(Array(wordCount).keys());
+            for (let i = indices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [indices[i], indices[j]] = [indices[j], indices[i]];
+            }
+            
+            const blankIndices = new Set(indices.slice(0, blanksCount));
+
+            // Populate the display area with words and blanks
+            verseDisplay.innerHTML = '';
+            originalVerseArray.forEach((word, index) => {
+                if (blankIndices.has(index)) {
+                    const inputEl = document.createElement('input');
+                    inputEl.type = 'text';
+                    inputEl.classList.add('blank-input');
+                    inputEl.dataset.originalWord = word; 
+                    verseDisplay.appendChild(inputEl);
+                } else {
+                    const wordEl = document.createElement('span');
+                    wordEl.textContent = word;
+                    verseDisplay.appendChild(wordEl);
+                }
+            });
+        }
+
+        function checkAnswer() {
+            const inputs = verseDisplay.querySelectorAll('.blank-input');
+            let allCorrect = true;
+
+            inputs.forEach(input => {
+                const userInput = input.value.trim().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").toLowerCase();
+                const originalWord = input.dataset.originalWord.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").toLowerCase();
+
+                if (userInput === originalWord) {
+                    input.classList.add('correct');
+                    input.classList.remove('incorrect');
+                } else {
+                    input.classList.add('incorrect');
+                    input.classList.remove('correct');
+                    allCorrect = false;
+                }
+            });
+
+            if (allCorrect) {
+                handleCorrectAnswer();
+            } else {
+                messageArea.textContent = "Some answers are incorrect. Keep trying!";
+                messageArea.classList.add('text-red-600');
+                messageArea.classList.remove('text-green-600');
+            }
+        }
+
+        function handleCorrectAnswer() {
+            messageArea.classList.remove('text-red-600');
+            messageArea.classList.add('text-green-600');
+
+            if (currentLevel < 4) {
+                messageArea.textContent = `Level ${currentLevel} complete! Click "Next Level" to continue.`;
+                checkBtn.classList.add('hidden');
+                nextLevelBtn.classList.remove('hidden');
+            } else {
+                messageArea.textContent = "Congratulations! You've mastered the verse!";
+                checkBtn.classList.add('hidden');
+                nextLevelBtn.classList.add('hidden');
+            }
+        }
+
+        function advanceLevel() {
+            currentLevel++;
+            if (currentLevel <= 4) {
+                setupLevel(currentLevel);
+            }
+        }
+
+        function resetGame() {
+            gameScreen.classList.add('hidden');
+            setupScreen.classList.remove('hidden');
+            verseInput.value = '';
+            originalVerseText = '';
+            currentLevel = 1;
+            messageArea.textContent = '';
+            setupMessageArea.textContent = '';
+            
+            // Ensure buttons are in the correct state for a new game
+            checkBtn.classList.remove('hidden');
+            nextLevelBtn.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
