@@ -34,6 +34,13 @@
             background-color: #fee2e2 !important; /* red-100 */
             border-bottom-color: #ef4444 !important; /* red-500 */
         }
+        /* Custom scrollbar for history if needed */
+        .history-item {
+            transition: all 0.2s;
+        }
+        .history-item:hover {
+            transform: translateX(4px);
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 flex items-center justify-center min-h-screen p-4">
@@ -51,6 +58,17 @@
             <button id="start-btn" class="w-full mt-2 bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-transform transform hover:scale-105">
                 Start Challenge
             </button>
+
+            <!-- New History Section -->
+            <div id="history-container" class="mt-8 pt-6 border-t border-slate-100 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Recent Verses</h3>
+                    <button id="clear-history-btn" class="text-xs text-red-400 hover:text-red-600 font-medium">Clear History</button>
+                </div>
+                <div id="history-list" class="flex flex-col gap-2">
+                    <!-- History items will be injected here -->
+                </div>
+            </div>
         </div>
 
         <div id="game-screen" class="hidden">
@@ -86,34 +104,117 @@
         const resetBtn = document.getElementById('reset-btn');
         const messageArea = document.getElementById('message-area');
         const setupMessageArea = document.getElementById('setup-message-area');
+        
+        // History Elements
+        const historyContainer = document.getElementById('history-container');
+        const historyList = document.getElementById('history-list');
+        const clearHistoryBtn = document.getElementById('clear-history-btn');
 
         // Game State
         let originalVerseText = '';
         let currentLevel = 1;
         const levelPercentages = { 1: 0.25, 2: 0.50, 3: 0.75, 4: 0.90 };
+        const HISTORY_KEY = 'verse_memorizer_history';
+        const MAX_HISTORY_ITEMS = 5;
 
         // --- Event Listeners ---
         startBtn.addEventListener('click', startGame);
         resetBtn.addEventListener('click', resetGame);
         checkBtn.addEventListener('click', checkAnswer);
         nextLevelBtn.addEventListener('click', advanceLevel);
+        clearHistoryBtn.addEventListener('click', clearHistory);
+
+        // --- Initialization ---
+        // Load history immediately when page opens
+        renderHistory();
 
         // --- Game Flow ---
 
         function startGame() {
             const verseText = verseInput.value.trim();
-            // Replaced alert with an inline message for better UX
+            
             if (verseText === "") {
                 setupMessageArea.textContent = "Please enter a verse to continue.";
                 return;
             }
             setupMessageArea.textContent = ""; // Clear message on success
+            
+            // Save to history before starting
+            saveToHistory(verseText);
+
             originalVerseText = verseText;
             currentLevel = 1;
             setupLevel(currentLevel);
             
             setupScreen.classList.add('hidden');
             gameScreen.classList.remove('hidden');
+        }
+
+        // --- History Functions ---
+
+        function getHistory() {
+            const stored = localStorage.getItem(HISTORY_KEY);
+            return stored ? JSON.parse(stored) : [];
+        }
+
+        function saveToHistory(verse) {
+            let history = getHistory();
+            
+            // Remove the verse if it already exists (to move it to the top)
+            history = history.filter(v => v !== verse);
+            
+            // Add new verse to the beginning
+            history.unshift(verse);
+            
+            // Keep only the most recent items
+            if (history.length > MAX_HISTORY_ITEMS) {
+                history = history.slice(0, MAX_HISTORY_ITEMS);
+            }
+
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const history = getHistory();
+            
+            if (history.length === 0) {
+                historyContainer.classList.add('hidden');
+                return;
+            }
+
+            historyContainer.classList.remove('hidden');
+            historyList.innerHTML = '';
+
+            history.forEach(verse => {
+                const btn = document.createElement('button');
+                btn.className = 'history-item w-full text-left p-3 rounded bg-slate-50 border border-slate-200 text-slate-600 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 text-sm truncate';
+                
+                // Truncate text for display
+                const displayText = verse.length > 80 ? verse.substring(0, 80) + '...' : verse;
+                btn.textContent = displayText;
+                
+                btn.onclick = () => {
+                    verseInput.value = verse;
+                    // Visual feedback
+                    verseInput.focus();
+                    setupMessageArea.textContent = "Verse loaded from history!";
+                    setupMessageArea.className = "mt-4 text-center font-medium h-6 text-green-600";
+                    setTimeout(() => {
+                        setupMessageArea.textContent = "";
+                        setupMessageArea.className = "mt-4 text-center font-medium h-6 text-red-600";
+                    }, 2000);
+                };
+                
+                historyList.appendChild(btn);
+            });
+        }
+
+        function clearHistory() {
+            if(confirm('Are you sure you want to clear your recent verses?')) {
+                localStorage.removeItem(HISTORY_KEY);
+                renderHistory();
+            }
         }
         
         function setupLevel(level) {
@@ -148,6 +249,7 @@
                     inputEl.type = 'text';
                     inputEl.classList.add('blank-input');
                     inputEl.dataset.originalWord = word; 
+                    // Auto-focus logic can be added here if needed for desktop
                     verseDisplay.appendChild(inputEl);
                 } else {
                     const wordEl = document.createElement('span');
@@ -218,6 +320,9 @@
             // Ensure buttons are in the correct state for a new game
             checkBtn.classList.remove('hidden');
             nextLevelBtn.classList.add('hidden');
+            
+            // Re-render history just in case something changed (though usually updates on start)
+            renderHistory();
         }
     </script>
 </body>
