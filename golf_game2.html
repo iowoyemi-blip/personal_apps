@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Backyard Target Golf Pro Scoreboard</title>
+<style>
+  :root{
+    --bg1:#064e3b;
+    --bg2:#0f172a;
+    --card:#111827;
+    --soft:#1f2937;
+    --text:#f8fafc;
+    --muted:#cbd5e1;
+    --accent:#22c55e;
+    --danger:#ef4444;
+    --gold:#f59e0b;
+    --blue:#93c5fd;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    background:linear-gradient(135deg,var(--bg1),var(--bg2));
+    color:var(--text);
+    min-height:100vh;
+    padding:14px;
+  }
+  .app{max-width:1100px;margin:auto}
+  h1{text-align:center;margin:8px 0 4px;font-size:clamp(1.9rem,5vw,3.3rem)}
+  .subtitle{text-align:center;color:var(--muted);margin-bottom:18px;font-size:1.05rem}
+  .card{
+    background:rgba(17,24,39,.92);
+    border:1px solid rgba(255,255,255,.13);
+    border-radius:20px;
+    padding:18px;
+    margin-bottom:16px;
+    box-shadow:0 12px 28px rgba(0,0,0,.28);
+  }
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+  label{display:block;color:var(--muted);font-size:.95rem;margin-bottom:6px}
+  input,select{
+    width:100%;padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,.18);
+    background:#020617;color:var(--text);font-size:1.05rem;
+  }
+  .buttons{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:11px;margin-top:12px}
+  button{
+    border:0;border-radius:16px;padding:16px 12px;font-size:1.08rem;font-weight:800;
+    cursor:pointer;color:#04130a;background:var(--accent);transition:.12s transform,.12s opacity;
+    min-height:58px;
+  }
+  button:hover{transform:translateY(-1px)}
+  button.secondary{background:var(--blue);color:#071426}
+  button.warning{background:var(--gold)}
+  button.danger{background:var(--danger);color:white}
+  button.dark{background:#334155;color:white}
+  .score-buttons button{min-height:92px;font-size:1.2rem}
+  .score{text-align:center;font-size:4.8rem;font-weight:950;line-height:1;margin:10px 0}
+  .small{color:var(--muted);text-align:center}
+  table{width:100%;border-collapse:collapse;overflow:hidden;border-radius:12px;font-size:.95rem}
+  th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,.12);text-align:left}
+  th{color:#bbf7d0}
+  tr:last-child td{border-bottom:0}
+  .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#064e3b;color:#bbf7d0;font-size:.85rem;font-weight:800}
+  .target{
+    width:min(240px,65vw);height:min(240px,65vw);border-radius:50%;margin:8px auto 12px;
+    background:radial-gradient(circle at center,#dc2626 0 14%,#f8fafc 15% 30%,#111827 31% 44%,#f8fafc 45% 57%,#111827 58% 100%);
+    border:6px solid #e5e7eb;box-shadow:0 8px 20px rgba(0,0,0,.35);
+  }
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:12px}
+  .stat{background:#020617;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:12px;text-align:center}
+  .stat strong{display:block;font-size:1.5rem;color:#bbf7d0}
+  .footer-note{color:var(--muted);font-size:.95rem;line-height:1.5}
+  canvas{width:100%;height:260px;background:#020617;border-radius:16px;border:1px solid rgba(255,255,255,.12)}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tab{background:#334155;color:white;min-height:44px;padding:10px 14px}
+  .tab.active{background:var(--accent);color:#04130a}
+  @media (max-width:650px){
+    body{padding:10px}
+    .card{padding:14px;border-radius:17px}
+    .score{font-size:4.2rem}
+    .score-buttons{grid-template-columns:repeat(2,1fr)}
+    .score-buttons button{min-height:105px;font-size:1.22rem}
+    th:nth-child(4),td:nth-child(4){display:none}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🏌️ Backyard Target Golf Pro</h1>
+  <div class="subtitle">Mobile-friendly scoreboard • leaderboard • progress graph • offline single-file app</div>
+
+  <div class="card grid">
+    <div>
+      <label>Player / Team Name</label>
+      <input id="player" value="Isaac" />
+    </div>
+    <div>
+      <label>Club</label>
+      <select id="club">
+        <option>Driver — 10 ft</option>
+        <option selected>Iron — 9 ft</option>
+        <option>Wedge — 8 ft</option>
+        <option>Mixed Clubs</option>
+      </select>
+    </div>
+    <div>
+      <label>Game Mode</label>
+      <select id="mode">
+        <option selected>Bullseye Golf</option>
+        <option>Call Your Shot</option>
+        <option>Countdown from 50</option>
+      </select>
+    </div>
+    <div>
+      <label>Shots Per Round</label>
+      <input id="shotsGoal" type="number" value="10" min="1" max="100" />
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="target" aria-label="Target graphic"></div>
+    <div class="score" id="score">0</div>
+    <div class="small"><span id="shots">0</span> shots recorded • Average: <span id="avg">0.0</span></div>
+
+    <div class="stat-row">
+      <div class="stat"><span>Best Round</span><strong id="bestRound">—</strong></div>
+      <div class="stat"><span>Best Average</span><strong id="bestAvg">—</strong></div>
+      <div class="stat"><span>Total Rounds</span><strong id="totalRounds">0</strong></div>
+      <div class="stat"><span>Total Shots</span><strong id="totalShots">0</strong></div>
+    </div>
+
+    <div class="buttons score-buttons">
+      <button onclick="addShot(10)">🎯 Center<br>10</button>
+      <button onclick="addShot(5)" class="secondary">⚪ Ring<br>5</button>
+      <button onclick="addShot(2)" class="warning">⬛ Net Area<br>2</button>
+      <button onclick="addShot(0)" class="dark">❌ Miss<br>0</button>
+    </div>
+
+    <div class="buttons">
+      <button onclick="undo()" class="secondary">Undo Last</button>
+      <button onclick="saveRound()" class="warning">Save Round</button>
+      <button onclick="newRound()" class="dark">New Round</button>
+      <button onclick="exportCSV()" class="secondary">Export CSV</button>
+      <button onclick="clearAll()" class="danger">Clear All</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('leaderboard', this)">🏆 Leaderboard</button>
+      <button class="tab" onclick="showTab('progress', this)">📊 Progress</button>
+      <button class="tab" onclick="showTab('logtab', this)">📋 Round Log</button>
+    </div>
+
+    <div id="leaderboard">
+      <table>
+        <thead><tr><th>Rank</th><th>Player</th><th>Best Score</th><th>Best Avg</th><th>Rounds</th></tr></thead>
+        <tbody id="leaderboardBody"></tbody>
+      </table>
+    </div>
+
+    <div id="progress" style="display:none">
+      <canvas id="chart" width="900" height="300"></canvas>
+      <div class="small">Graph shows saved round scores over time. Higher is better for Bullseye and Call Your Shot.</div>
+    </div>
+
+    <div id="logtab" style="display:none">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Player</th><th>Club</th><th>Mode</th><th>Shots</th><th>Score</th><th>Average</th><th>Date</th></tr>
+        </thead>
+        <tbody id="log"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card footer-note">
+    <strong>Suggested spacing:</strong> Driver: ball about 10 ft from the net. Irons: about 9 ft. Wedges/short irons: about 8 ft.
+    Start with slow swings, confirm no dangerous bounce-back, then move to full swings.
+  </div>
+</div>
+
+<script>
+let currentShots = [];
+let savedRounds = JSON.parse(localStorage.getItem("golfRoundsPro") || "[]");
+
+function currentTotal(){
+  return currentShots.reduce((a,b)=>a+b,0);
+}
+
+function update(){
+  const mode = document.getElementById("mode").value;
+  const count = currentShots.length;
+  if(mode === "Countdown from 50" && count){
+    document.getElementById("score").textContent = currentShots[count-1];
+    document.getElementById("avg").textContent = "—";
+  } else {
+    const total = currentTotal();
+    document.getElementById("score").textContent = total;
+    document.getElementById("avg").textContent = count ? (total/count).toFixed(1) : "0.0";
+  }
+  document.getElementById("shots").textContent = count;
+  renderAll();
+}
+
+function addShot(points){
+  const mode = document.getElementById("mode").value;
+  if(mode === "Countdown from 50"){
+    const current = currentShots.length ? currentShots[currentShots.length-1] : 50;
+    const next = current - points;
+    currentShots.push(next < 0 ? 25 : next);
+  } else {
+    currentShots.push(points);
+  }
+  update();
+  const goal = Number(document.getElementById("shotsGoal").value);
+  if(currentShots.length === goal){
+    setTimeout(()=>alert("Round complete! Save your round or start a new one."),100);
+  }
+}
+
+function undo(){ currentShots.pop(); update(); }
+function newRound(){ currentShots = []; update(); }
+
+function saveRound(){
+  if(currentShots.length === 0){ alert("Record at least one shot first."); return; }
+  const mode = document.getElementById("mode").value;
+  const shots = currentShots.length;
+  const score = mode === "Countdown from 50" ? currentShots[shots-1] : currentTotal();
+  const avg = mode === "Countdown from 50" ? "—" : (score/shots).toFixed(1);
+  savedRounds.push({
+    player: document.getElementById("player").value || "Player",
+    club: document.getElementById("club").value,
+    mode, shots, score, avg,
+    date: new Date().toLocaleString()
+  });
+  localStorage.setItem("golfRoundsPro", JSON.stringify(savedRounds));
+  newRound();
+}
+
+function clearAll(){
+  if(confirm("Clear all saved rounds and leaderboard data?")){
+    savedRounds = [];
+    localStorage.removeItem("golfRoundsPro");
+    newRound();
+  }
+}
+
+function renderAll(){
+  renderLog();
+  renderLeaderboard();
+  renderStats();
+  drawChart();
+}
+
+function renderStats(){
+  document.getElementById("totalRounds").textContent = savedRounds.length;
+  document.getElementById("totalShots").textContent = savedRounds.reduce((a,r)=>a+Number(r.shots),0);
+  const scored = savedRounds.filter(r => r.avg !== "—");
+  document.getElementById("bestRound").textContent = scored.length ? Math.max(...scored.map(r=>Number(r.score))) : "—";
+  document.getElementById("bestAvg").textContent = scored.length ? Math.max(...scored.map(r=>Number(r.avg))).toFixed(1) : "—";
+}
+
+function renderLog(){
+  const log = document.getElementById("log");
+  log.innerHTML = "";
+  savedRounds.forEach((r,i)=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><span class="pill">${i+1}</span></td>
+      <td>${escapeHtml(r.player)}</td>
+      <td>${escapeHtml(r.club)}</td>
+      <td>${escapeHtml(r.mode)}</td>
+      <td>${r.shots}</td>
+      <td>${r.score}</td>
+      <td>${r.avg}</td>
+      <td>${escapeHtml(r.date || "")}</td>`;
+    log.appendChild(tr);
+  });
+}
+
+function renderLeaderboard(){
+  const byPlayer = {};
+  savedRounds.filter(r=>r.avg !== "—").forEach(r=>{
+    const p = r.player || "Player";
+    if(!byPlayer[p]) byPlayer[p] = {player:p,bestScore:0,bestAvg:0,rounds:0};
+    byPlayer[p].bestScore = Math.max(byPlayer[p].bestScore, Number(r.score));
+    byPlayer[p].bestAvg = Math.max(byPlayer[p].bestAvg, Number(r.avg));
+    byPlayer[p].rounds += 1;
+  });
+  const rows = Object.values(byPlayer).sort((a,b)=>b.bestAvg-a.bestAvg || b.bestScore-a.bestScore);
+  const body = document.getElementById("leaderboardBody");
+  body.innerHTML = "";
+  rows.forEach((r,i)=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td><span class="pill">${i+1}</span></td><td>${escapeHtml(r.player)}</td><td>${r.bestScore}</td><td>${r.bestAvg.toFixed(1)}</td><td>${r.rounds}</td>`;
+    body.appendChild(tr);
+  });
+  if(rows.length === 0){
+    body.innerHTML = `<tr><td colspan="5">No saved Bullseye or Call Your Shot rounds yet.</td></tr>`;
+  }
+}
+
+function drawChart(){
+  const canvas = document.getElementById("chart");
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = "#020617";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  const data = savedRounds.filter(r=>r.avg !== "—").map(r=>Number(r.score));
+  ctx.strokeStyle = "rgba(255,255,255,.25)";
+  ctx.lineWidth = 1;
+  for(let i=0;i<5;i++){
+    const y = 35 + i*50;
+    ctx.beginPath(); ctx.moveTo(45,y); ctx.lineTo(canvas.width-20,y); ctx.stroke();
+  }
+  ctx.fillStyle = "#cbd5e1";
+  ctx.font = "16px system-ui";
+  ctx.fillText("Saved Round Scores", 45, 25);
+
+  if(data.length === 0){
+    ctx.fillText("Save a round to see your progress graph.", 45, 155);
+    return;
+  }
+  const max = Math.max(10, ...data);
+  const min = 0;
+  const left = 50, right = canvas.width-30, top = 45, bottom = canvas.height-35;
+  const xStep = data.length === 1 ? 0 : (right-left)/(data.length-1);
+
+  ctx.strokeStyle = "#22c55e";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  data.forEach((v,i)=>{
+    const x = data.length === 1 ? (left+right)/2 : left + i*xStep;
+    const y = bottom - ((v-min)/(max-min))*(bottom-top);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  data.forEach((v,i)=>{
+    const x = data.length === 1 ? (left+right)/2 : left + i*xStep;
+    const y = bottom - ((v-min)/(max-min))*(bottom-top);
+    ctx.fillStyle = "#bbf7d0";
+    ctx.beginPath(); ctx.arc(x,y,7,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#f8fafc";
+    ctx.font = "14px system-ui";
+    ctx.fillText(v, x-8, y-12);
+  });
+}
+
+function showTab(id, btn){
+  ["leaderboard","progress","logtab"].forEach(x=>document.getElementById(x).style.display="none");
+  document.getElementById(id).style.display="block";
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  btn.classList.add("active");
+  if(id==="progress") drawChart();
+}
+
+function exportCSV(){
+  if(savedRounds.length === 0){ alert("No saved rounds to export."); return; }
+  const header = ["Player","Club","Mode","Shots","Score","Average","Date"];
+  const rows = savedRounds.map(r=>[r.player,r.club,r.mode,r.shots,r.score,r.avg,r.date]);
+  const csv = [header, ...rows].map(row=>row.map(cell=>`"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], {type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "backyard-target-golf-rounds.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function escapeHtml(text){
+  return String(text).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+
+update();
+</script>
+</body>
+</html>
