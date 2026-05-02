@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Backyard Target Golf Scoreboard</title>
+<style>
+  :root{
+    --bg:#0f172a;
+    --card:#111827;
+    --soft:#1f2937;
+    --text:#f8fafc;
+    --muted:#cbd5e1;
+    --accent:#22c55e;
+    --danger:#ef4444;
+    --gold:#f59e0b;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    background:linear-gradient(135deg,#064e3b,#0f172a);
+    color:var(--text);
+    min-height:100vh;
+    padding:20px;
+  }
+  .app{
+    max-width:980px;
+    margin:auto;
+  }
+  h1{
+    text-align:center;
+    margin:8px 0 4px;
+    font-size:clamp(1.8rem,4vw,3rem);
+  }
+  .subtitle{
+    text-align:center;
+    color:var(--muted);
+    margin-bottom:20px;
+  }
+  .card{
+    background:rgba(17,24,39,.9);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:18px;
+    padding:18px;
+    margin-bottom:16px;
+    box-shadow:0 10px 25px rgba(0,0,0,.25);
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:14px;
+  }
+  label{
+    display:block;
+    color:var(--muted);
+    font-size:.95rem;
+    margin-bottom:6px;
+  }
+  input,select{
+    width:100%;
+    padding:12px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.18);
+    background:#020617;
+    color:var(--text);
+    font-size:1rem;
+  }
+  .buttons{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+    gap:10px;
+    margin-top:12px;
+  }
+  button{
+    border:0;
+    border-radius:14px;
+    padding:14px 12px;
+    font-size:1rem;
+    font-weight:700;
+    cursor:pointer;
+    color:#04130a;
+    background:var(--accent);
+    transition:.12s transform,.12s opacity;
+  }
+  button:hover{transform:translateY(-1px)}
+  button.secondary{
+    background:#93c5fd;
+    color:#071426;
+  }
+  button.warning{
+    background:var(--gold);
+  }
+  button.danger{
+    background:var(--danger);
+    color:white;
+  }
+  button.dark{
+    background:#334155;
+    color:white;
+  }
+  .score-buttons button{
+    min-height:70px;
+    font-size:1.1rem;
+  }
+  .score{
+    text-align:center;
+    font-size:4rem;
+    font-weight:900;
+    line-height:1;
+    margin:10px 0;
+  }
+  .small{
+    color:var(--muted);
+    text-align:center;
+  }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    overflow:hidden;
+    border-radius:12px;
+  }
+  th,td{
+    padding:10px;
+    border-bottom:1px solid rgba(255,255,255,.12);
+    text-align:left;
+  }
+  th{color:#bbf7d0}
+  tr:last-child td{border-bottom:0}
+  .pill{
+    display:inline-block;
+    padding:4px 8px;
+    border-radius:999px;
+    background:#064e3b;
+    color:#bbf7d0;
+    font-size:.85rem;
+    font-weight:700;
+  }
+  .target{
+    width:210px;
+    height:210px;
+    border-radius:50%;
+    margin:8px auto 12px;
+    background:
+      radial-gradient(circle at center,
+      #dc2626 0 14%,
+      #f8fafc 15% 30%,
+      #111827 31% 44%,
+      #f8fafc 45% 57%,
+      #111827 58% 100%);
+    border:6px solid #e5e7eb;
+    box-shadow:0 8px 20px rgba(0,0,0,.35);
+  }
+  .footer-note{
+    color:var(--muted);
+    font-size:.92rem;
+    line-height:1.5;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🏌️ Backyard Target Golf</h1>
+  <div class="subtitle">Simple scoreboard for driver, irons, wedges, and student challenges</div>
+
+  <div class="card grid">
+    <div>
+      <label>Player / Team Name</label>
+      <input id="player" value="Isaac" />
+    </div>
+    <div>
+      <label>Club</label>
+      <select id="club">
+        <option>Driver — 10 ft</option>
+        <option selected>Iron — 9 ft</option>
+        <option>Wedge — 8 ft</option>
+        <option>Mixed Clubs</option>
+      </select>
+    </div>
+    <div>
+      <label>Game Mode</label>
+      <select id="mode">
+        <option selected>Bullseye Golf</option>
+        <option>Call Your Shot</option>
+        <option>Countdown from 50</option>
+      </select>
+    </div>
+    <div>
+      <label>Shots Per Round</label>
+      <input id="shotsGoal" type="number" value="10" min="1" max="100" />
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="target" aria-label="Target graphic"></div>
+    <div class="score" id="score">0</div>
+    <div class="small"><span id="shots">0</span> shots recorded • Average: <span id="avg">0.0</span></div>
+
+    <div class="buttons score-buttons">
+      <button onclick="addShot(10)">🎯 Center<br>10</button>
+      <button onclick="addShot(5)" class="secondary">⚪ Ring<br>5</button>
+      <button onclick="addShot(2)" class="warning">⬛ Net Area<br>2</button>
+      <button onclick="addShot(0)" class="dark">❌ Miss<br>0</button>
+    </div>
+
+    <div class="buttons">
+      <button onclick="undo()" class="secondary">Undo Last</button>
+      <button onclick="saveRound()" class="warning">Save Round</button>
+      <button onclick="newRound()" class="dark">New Round</button>
+      <button onclick="clearAll()" class="danger">Clear All</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Round Log</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Player</th>
+          <th>Club</th>
+          <th>Mode</th>
+          <th>Shots</th>
+          <th>Score</th>
+          <th>Average</th>
+        </tr>
+      </thead>
+      <tbody id="log"></tbody>
+    </table>
+  </div>
+
+  <div class="card footer-note">
+    <strong>Suggested spacing:</strong> Driver: ball about 10 ft from the net. Irons: about 9 ft. Wedges/short irons: about 8 ft.
+    Always begin with slow swings and confirm there is no dangerous bounce-back before full swings.
+  </div>
+</div>
+
+<script>
+let currentShots = [];
+let savedRounds = JSON.parse(localStorage.getItem("golfRounds") || "[]");
+
+function update(){
+  const total = currentShots.reduce((a,b)=>a+b,0);
+  const count = currentShots.length;
+  document.getElementById("score").textContent = total;
+  document.getElementById("shots").textContent = count;
+  document.getElementById("avg").textContent = count ? (total/count).toFixed(1) : "0.0";
+  renderLog();
+}
+
+function addShot(points){
+  const mode = document.getElementById("mode").value;
+  if(mode === "Countdown from 50"){
+    if(currentShots.length === 0 && document.getElementById("score").textContent === "0"){
+      currentShots.push(50 - points);
+    } else {
+      const current = currentShots[currentShots.length-1];
+      const next = current - points;
+      currentShots.push(next < 0 ? 25 : next);
+    }
+    document.getElementById("score").textContent = currentShots[currentShots.length-1];
+    document.getElementById("shots").textContent = currentShots.length;
+    document.getElementById("avg").textContent = "—";
+    return;
+  }
+  currentShots.push(points);
+  update();
+  const goal = Number(document.getElementById("shotsGoal").value);
+  if(currentShots.length === goal){
+    setTimeout(()=>alert("Round complete! Save your round or start a new one."),100);
+  }
+}
+
+function undo(){
+  currentShots.pop();
+  update();
+}
+
+function newRound(){
+  currentShots = [];
+  update();
+}
+
+function saveRound(){
+  if(currentShots.length === 0){
+    alert("Record at least one shot first.");
+    return;
+  }
+  const mode = document.getElementById("mode").value;
+  let score;
+  if(mode === "Countdown from 50"){
+    score = currentShots[currentShots.length-1];
+  } else {
+    score = currentShots.reduce((a,b)=>a+b,0);
+  }
+  const shots = currentShots.length;
+  savedRounds.push({
+    player: document.getElementById("player").value || "Player",
+    club: document.getElementById("club").value,
+    mode,
+    shots,
+    score,
+    avg: mode === "Countdown from 50" ? "—" : (score/shots).toFixed(1)
+  });
+  localStorage.setItem("golfRounds", JSON.stringify(savedRounds));
+  newRound();
+  renderLog();
+}
+
+function clearAll(){
+  if(confirm("Clear all saved rounds?")){
+    savedRounds = [];
+    localStorage.removeItem("golfRounds");
+    newRound();
+  }
+}
+
+function renderLog(){
+  const log = document.getElementById("log");
+  log.innerHTML = "";
+  savedRounds.forEach((r,i)=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><span class="pill">${i+1}</span></td>
+      <td>${escapeHtml(r.player)}</td>
+      <td>${escapeHtml(r.club)}</td>
+      <td>${escapeHtml(r.mode)}</td>
+      <td>${r.shots}</td>
+      <td>${r.score}</td>
+      <td>${r.avg}</td>
+    `;
+    log.appendChild(tr);
+  });
+}
+
+function escapeHtml(text){
+  return String(text).replace(/[&<>"']/g, m => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+  }[m]));
+}
+
+update();
+</script>
+</body>
+</html>
