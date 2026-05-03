@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Health Rhythm Tracker</title>
+  <style>
+    :root {
+      --bg: #f7f4ee;
+      --card: #ffffff;
+      --text: #243042;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --accent: #2563eb;
+      --accent-2: #16a34a;
+      --warm: #f59e0b;
+      --danger: #dc2626;
+      --soft-blue: #dbeafe;
+      --soft-green: #dcfce7;
+      --soft-amber: #fef3c7;
+      --shadow: 0 12px 30px rgba(31, 41, 55, 0.12);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 32%),
+        radial-gradient(circle at top right, rgba(22, 163, 74, 0.12), transparent 28%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 28px;
+    }
+
+    .app {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1e3a8a, #2563eb 55%, #16a34a);
+      color: white;
+      padding: 30px;
+      border-radius: 26px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    header p {
+      max-width: 760px;
+      margin: 0;
+      color: rgba(255,255,255,0.9);
+      font-size: 1.05rem;
+      line-height: 1.6;
+    }
+
+    .top-row {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    @media (max-width: 900px) {
+      .top-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(229, 231, 235, 0.9);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      backdrop-filter: blur(8px);
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 1.25rem;
+    }
+
+    .date-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-top: 14px;
+    }
+
+    button, input, textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: var(--accent);
+      color: white;
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform 0.12s ease, opacity 0.12s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      opacity: 0.92;
+    }
+
+    button.secondary {
+      background: #eef2ff;
+      color: #1e3a8a;
+    }
+
+    button.green {
+      background: var(--accent-2);
+    }
+
+    button.danger {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    input[type="date"], textarea {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: white;
+      color: var(--text);
+    }
+
+    .verse-box {
+      background: var(--soft-amber);
+      border: 1px solid #fde68a;
+      border-radius: 16px;
+      padding: 14px;
+      line-height: 1.55;
+    }
+
+    .verse-box strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 700px) {
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .stat {
+      border-radius: 16px;
+      padding: 16px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+    }
+
+    .stat .num {
+      font-size: 2.3rem;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat .label {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .progress-wrap {
+      margin-top: 14px;
+      background: #e5e7eb;
+      height: 16px;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width 0.25s ease;
+    }
+
+    .tracker {
+      overflow-x: auto;
+      padding: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 850px;
+      background: white;
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 13px 10px;
+      text-align: center;
+    }
+
+    th {
+      background: #f1f5f9;
+      font-size: 0.9rem;
+      color: #334155;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    td:first-child, th:first-child {
+      text-align: left;
+      font-weight: 750;
+      min-width: 210px;
+      position: sticky;
+      left: 0;
+      background: inherit;
+    }
+
+    tbody tr:nth-child(odd) td {
+      background: #ffffff;
+    }
+
+    tbody tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+
+    .habit-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .check {
+      width: 28px;
+      height: 28px;
+      border-radius: 9px;
+      border: 2px solid #cbd5e1;
+      display: inline-grid;
+      place-items: center;
+      cursor: pointer;
+      user-select: none;
+      margin: 0 auto;
+      background: white;
+      transition: all 0.14s ease;
+      font-weight: 900;
+      color: transparent;
+    }
+
+    .check.checked {
+      background: var(--accent-2);
+      border-color: var(--accent-2);
+      color: white;
+    }
+
+    .day-total {
+      font-weight: 900;
+      color: #1e3a8a;
+    }
+
+    .notes-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    @media (max-width: 900px) {
+      .notes-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 135px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.45;
+    }
+
+    .footer-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border-radius: 999px;
+      padding: 7px 11px;
+      background: var(--soft-blue);
+      color: #1e40af;
+      font-weight: 750;
+      font-size: 0.92rem;
+      margin-top: 10px;
+    }
+
+    .print-only {
+      display: none;
+    }
+
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      header, .date-nav, .footer-actions, button, input[type="date"] {
+        display: none !important;
+      }
+      .card {
+        box-shadow: none;
+        border: 1px solid #ddd;
+      }
+      .print-only {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Health Rhythm Tracker</h1>
+      <p>A simple weekly checklist for steady growth: prayer, exercise, protein breakfast, water, stretching, and sleep. Small daily steps. Long-term faithfulness.</p>
+      <div class="pill">Move well • Eat wisely • Sleep deeply • Live calmly</div>
+    </header>
+
+    <section class="top-row">
+      <div class="card">
+        <h2>This Week</h2>
+        <p class="small">Choose any date in the week you want to update. Your checks and notes are saved automatically on this Mac in this browser.</p>
+        <div class="date-nav">
+          <button class="secondary" id="prevWeek">← Previous Week</button>
+          <input id="datePicker" type="date" />
+          <button class="secondary" id="todayBtn">Today</button>
+          <button class="secondary" id="nextWeek">Next Week →</button>
+        </div>
+        <p id="weekLabel" class="pill"></p>
+      </div>
+
+      <div class="card">
+        <h2>Weekly Progress</h2>
+        <div class="summary-grid">
+          <div class="stat">
+            <div class="num" id="checksDone">0</div>
+            <div class="label">checks completed</div>
+          </div>
+          <div class="stat">
+            <div class="num" id="percentDone">0%</div>
+            <div class="label">of weekly rhythm</div>
+          </div>
+          <div class="stat">
+            <div class="num" id="goodWeek">0</div>
+            <div class="label">checks toward 25+</div>
+          </div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress" id="progressBar"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card tracker">
+      <h2 class="print-only">Health Rhythm Tracker</h2>
+      <table>
+        <thead>
+          <tr id="headerRow">
+            <th>Habit</th>
+          </tr>
+        </thead>
+        <tbody id="trackerBody"></tbody>
+        <tfoot>
+          <tr id="totalsRow">
+            <th>Daily Total</th>
+          </tr>
+        </tfoot>
+      </table>
+    </section>
+
+    <section class="notes-grid">
+      <div class="card">
+        <h2>Reflection Notes</h2>
+        <p class="small">Use this for brief observations: energy, sleep, aches, stress, gratitude, or what helped you stay consistent.</p>
+        <textarea id="notes" placeholder="Example: I had better energy after drinking water before lunch. Stretching helped my calves feel better."></textarea>
+      </div>
+
+      <div class="card">
+        <h2>Gentle Encouragement</h2>
+        <div class="verse-box">
+          <strong>Today’s reminder</strong>
+          “Discipline is not a punishment; it is a path. Small faithful choices are like drops of water filling a bucket.”
+        </div>
+        <p class="small">A good week is not perfection. Aim for 25–30 checks out of 42. Consistency over time matters more than a flawless streak.</p>
+        <div class="footer-actions">
+          <button class="green" id="exportBtn">Export Backup</button>
+          <button class="secondary" id="importBtn">Import Backup</button>
+          <button class="secondary" id="printBtn">Print Week</button>
+          <button class="danger" id="clearWeekBtn">Clear This Week</button>
+          <input type="file" id="importFile" accept="application/json" style="display:none" />
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const habits = [
+      { id: "prayer", label: "🙏 Prayer" },
+      { id: "exercise", label: "🏃 Exercise" },
+      { id: "protein", label: "🍳 Protein breakfast" },
+      { id: "water", label: "💧 Water before lunch" },
+      { id: "stretch", label: "🧘 Stretch 5 min" },
+      { id: "sleep", label: "🌙 Bed by 9:40" }
+    ];
+
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const storageKey = "health-rhythm-tracker-v1";
+    let selectedDate = new Date();
+
+    const datePicker = document.getElementById("datePicker");
+    const headerRow = document.getElementById("headerRow");
+    const trackerBody = document.getElementById("trackerBody");
+    const totalsRow = document.getElementById("totalsRow");
+    const weekLabel = document.getElementById("weekLabel");
+    const notes = document.getElementById("notes");
+
+    function formatISO(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function formatDisplay(date) {
+      return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    }
+
+    function startOfWeek(date) {
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - d.getDay());
+      return d;
+    }
+
+    function addDays(date, days) {
+      const d = new Date(date);
+      d.setDate(d.getDate() + days);
+      return d;
+    }
+
+    function weekKey(date) {
+      return formatISO(startOfWeek(date));
+    }
+
+    function getData() {
+      try {
+        return JSON.parse(localStorage.getItem(storageKey)) || {};
+      } catch {
+        return {};
+      }
+    }
+
+    function saveData(data) {
+      localStorage.setItem(storageKey, JSON.stringify(data));
+    }
+
+    function ensureWeek(data, key) {
+      if (!data[key]) {
+        data[key] = { checks: {}, notes: "" };
+      }
+      return data[key];
+    }
+
+    function render() {
+      const start = startOfWeek(selectedDate);
+      const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+      const key = weekKey(selectedDate);
+      const data = getData();
+      const week = ensureWeek(data, key);
+      saveData(data);
+
+      datePicker.value = formatISO(selectedDate);
+      weekLabel.textContent = `Week of ${formatDisplay(start)} – ${formatDisplay(addDays(start, 6))}`;
+
+      headerRow.innerHTML = "<th>Habit</th>";
+      days.forEach(day => {
+        const th = document.createElement("th");
+        th.textContent = `${dayNames[day.getDay()]} ${formatDisplay(day)}`;
+        headerRow.appendChild(th);
+      });
+
+      trackerBody.innerHTML = "";
+      habits.forEach(habit => {
+        const tr = document.createElement("tr");
+
+        const label = document.createElement("td");
+        label.innerHTML = `<span class="habit-label">${habit.label}</span>`;
+        tr.appendChild(label);
+
+        days.forEach(day => {
+          const iso = formatISO(day);
+          const td = document.createElement("td");
+          const check = document.createElement("span");
+          const checked = week.checks?.[iso]?.[habit.id] === true;
+          check.className = "check" + (checked ? " checked" : "");
+          check.textContent = "✓";
+          check.title = "Click to mark/unmark";
+          check.addEventListener("click", () => toggleCheck(iso, habit.id));
+          td.appendChild(check);
+          tr.appendChild(td);
+        });
+
+        trackerBody.appendChild(tr);
+      });
+
+      totalsRow.innerHTML = "<th>Daily Total</th>";
+      days.forEach(day => {
+        const iso = formatISO(day);
+        const total = habits.reduce((sum, habit) => sum + (week.checks?.[iso]?.[habit.id] ? 1 : 0), 0);
+        const td = document.createElement("td");
+        td.className = "day-total";
+        td.textContent = `${total}/${habits.length}`;
+        totalsRow.appendChild(td);
+      });
+
+      notes.value = week.notes || "";
+      updateProgress(week, days);
+    }
+
+    function toggleCheck(iso, habitId) {
+      const key = weekKey(selectedDate);
+      const data = getData();
+      const week = ensureWeek(data, key);
+      week.checks[iso] = week.checks[iso] || {};
+      week.checks[iso][habitId] = !week.checks[iso][habitId];
+      saveData(data);
+      render();
+    }
+
+    function updateProgress(week, days) {
+      let count = 0;
+      days.forEach(day => {
+        const iso = formatISO(day);
+        habits.forEach(habit => {
+          if (week.checks?.[iso]?.[habit.id]) count++;
+        });
+      });
+
+      const max = habits.length * 7;
+      const pct = Math.round((count / max) * 100);
+      document.getElementById("checksDone").textContent = count;
+      document.getElementById("percentDone").textContent = `${pct}%`;
+      document.getElementById("goodWeek").textContent = Math.min(count, 25);
+      document.getElementById("progressBar").style.width = `${pct}%`;
+    }
+
+    notes.addEventListener("input", () => {
+      const key = weekKey(selectedDate);
+      const data = getData();
+      const week = ensureWeek(data, key);
+      week.notes = notes.value;
+      saveData(data);
+    });
+
+    datePicker.addEventListener("change", e => {
+      selectedDate = new Date(e.target.value + "T12:00:00");
+      render();
+    });
+
+    document.getElementById("todayBtn").addEventListener("click", () => {
+      selectedDate = new Date();
+      render();
+    });
+
+    document.getElementById("prevWeek").addEventListener("click", () => {
+      selectedDate = addDays(selectedDate, -7);
+      render();
+    });
+
+    document.getElementById("nextWeek").addEventListener("click", () => {
+      selectedDate = addDays(selectedDate, 7);
+      render();
+    });
+
+    document.getElementById("clearWeekBtn").addEventListener("click", () => {
+      if (!confirm("Clear all checks and notes for this week?")) return;
+      const data = getData();
+      delete data[weekKey(selectedDate)];
+      saveData(data);
+      render();
+    });
+
+    document.getElementById("printBtn").addEventListener("click", () => window.print());
+
+    document.getElementById("exportBtn").addEventListener("click", () => {
+      const blob = new Blob([JSON.stringify(getData(), null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "health-rhythm-tracker-backup.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById("importBtn").addEventListener("click", () => {
+      document.getElementById("importFile").click();
+    });
+
+    document.getElementById("importFile").addEventListener("change", event => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const imported = JSON.parse(reader.result);
+          localStorage.setItem(storageKey, JSON.stringify(imported));
+          alert("Backup imported successfully.");
+          render();
+        } catch {
+          alert("That file could not be imported. Please choose a valid JSON backup.");
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    render();
+  </script>
+</body>
+</html>
