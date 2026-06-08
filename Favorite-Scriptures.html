@@ -130,6 +130,13 @@ main{ padding:24px clamp(16px,5vw,40px) 0; max-width:1040px; margin:0 auto; }
 .input:focus{ outline:none; border-color:var(--gold); }
 textarea.input{ min-height:108px; resize:vertical; line-height:1.5; }
 .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:22px; }
+footer.backup{ max-width:1040px; margin:40px auto 0; padding:18px clamp(16px,5vw,40px) 0; border-top:1px solid var(--line); display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+.linkbtn{ font-family:var(--serif); font-size:14px; background:none; border:none; color:var(--ink2); cursor:pointer; padding:6px 12px; border-radius:8px; }
+.linkbtn:active{ color:var(--accent); }
+.hint-text{ font-size:14px; color:var(--ink2); margin:0 0 14px; line-height:1.55; }
+.backup-area{ width:100%; min-height:130px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; line-height:1.4; padding:12px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--ink); resize:vertical; }
+.filerow{ margin:12px 0 4px; font-size:14px; }
+.row-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
 .hidden{ display:none !important; }
 </style>
 </head>
@@ -150,6 +157,10 @@ textarea.input{ min-height:108px; resize:vertical; line-height:1.5; }
 </header>
 
 <main id="app"></main>
+<footer class="backup">
+  <button class="linkbtn" onclick="exportModal()">⤓&nbsp; Export backup</button>
+  <button class="linkbtn" onclick="importModal()">⤒&nbsp; Import / Restore</button>
+</footer>
 <div id="modal-root"></div>
 
 <script>
@@ -399,6 +410,122 @@ function deleteVerse(id){
   if(!confirm("Remove this verse from your memory deck?")) return;
   state.verses = state.verses.filter(function(v){return v.id!==id;});
   save(); render();
+}
+
+// ── Backup: Export / Import ─────────────────────────────────────────
+function closeModal(){ state.form=null; document.getElementById("modal-root").innerHTML=""; }
+
+function backupJSON(){
+  return JSON.stringify({
+    app:"hidden-in-my-heart", version:1, exported:new Date().toISOString(),
+    categories:state.categories, verses:state.verses
+  }, null, 2);
+}
+
+function exportModal(){
+  var vN=state.verses.length, cN=state.categories.length;
+  document.getElementById("modal-root").innerHTML =
+    '<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal">'
+    + '<h2>Export Backup</h2>'
+    + '<p class="hint-text">Your full collection — '+vN+' verse'+(vN===1?"":"s")+' and '+cN+' categor'+(cN===1?"y":"ies")+'. Copy this and keep it somewhere safe (paste into Apple Notes, or email it to yourself), or download it as a file.</p>'
+    + '<textarea class="backup-area" id="exp-text" readonly>'+esc(backupJSON())+'</textarea>'
+    + '<div class="row-actions">'
+    +   '<button class="btn-add" onclick="copyBackup()">Copy to clipboard</button>'
+    +   '<button class="ghost" onclick="downloadBackup()">Download file</button>'
+    +   '<button class="ghost" onclick="closeModal()">Close</button>'
+    + '</div></div></div>';
+}
+function copyBackup(){
+  var ta=document.getElementById("exp-text");
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).then(
+      function(){ alert("Backup copied. Paste it into Notes or email it to yourself to keep it safe."); },
+      function(){ legacyCopy(ta); }
+    );
+  } else { legacyCopy(ta); }
+}
+function legacyCopy(ta){
+  ta.removeAttribute("readonly"); ta.focus(); ta.select();
+  try{ ta.setSelectionRange(0,999999); }catch(e){}
+  try{ document.execCommand("copy"); alert("Backup copied."); }
+  catch(e){ alert("Couldn't copy automatically — tap and hold the text to select it, then choose Copy."); }
+  ta.setAttribute("readonly","readonly");
+}
+function downloadBackup(){
+  try{
+    var blob=new Blob([backupJSON()],{type:"application/json"});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement("a");
+    a.href=url; a.download="scripture-memory-backup-"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); },1500);
+  }catch(e){ alert("Download isn't available here — use Copy to clipboard instead."); }
+}
+
+function importModal(){
+  document.getElementById("modal-root").innerHTML =
+    '<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal">'
+    + '<h2>Import / Restore</h2>'
+    + '<p class="hint-text">Choose a backup file, or paste backup text below. Importing <strong>adds</strong> to what you already have — existing verses are kept, and exact duplicates are skipped.</p>'
+    + '<div class="filerow"><input type="file" id="imp-file" accept=".json,application/json,text/plain" onchange="readImportFile(this)" /></div>'
+    + '<textarea class="backup-area" id="imp-text" placeholder="…or paste backup text here"></textarea>'
+    + '<div class="row-actions">'
+    +   '<button class="btn-add" onclick="doImport()">Restore (merge)</button>'
+    +   '<button class="ghost" onclick="closeModal()">Cancel</button>'
+    + '</div></div></div>';
+}
+function readImportFile(input){
+  var f=input.files && input.files[0]; if(!f) return;
+  var r=new FileReader();
+  r.onload=function(){ document.getElementById("imp-text").value=r.result; };
+  r.readAsText(f);
+}
+function doImport(){
+  var raw=(document.getElementById("imp-text").value||"").trim();
+  if(!raw){ alert("Paste backup text or choose a file first."); return; }
+  var data;
+  try{ data=JSON.parse(raw); }
+  catch(e){ alert("That doesn't look like valid backup text. Make sure you copied the whole thing."); return; }
+
+  var inCats=Array.isArray(data.categories)?data.categories:[];
+  var inVerses=Array.isArray(data.verses)?data.verses:[];
+  if(!inVerses.length && !inCats.length){ alert("No verses or categories found in that backup."); return; }
+
+  // Resolve imported category ids to ids in the current collection
+  var idMap={}, newCats=0;
+  inCats.forEach(function(c){
+    if(!c || !c.name) return;
+    var existing=null;
+    for(var i=0;i<state.categories.length;i++){
+      if(state.categories[i].name.toLowerCase()===String(c.name).toLowerCase()){ existing=state.categories[i]; break; }
+    }
+    if(existing){ idMap[c.id]=existing.id; return; }
+    var newId=c.id;
+    for(var k=0;k<state.categories.length;k++){ if(state.categories[k].id===newId){ newId=uid(); break; } }
+    state.categories.push({ id:newId, name:String(c.name) });
+    idMap[c.id]=newId; newCats++;
+  });
+
+  // Dedup verses by reference + text
+  var keys={};
+  state.verses.forEach(function(v){ keys[(v.reference+"|"+v.text).toLowerCase()]=true; });
+
+  var newVerses=0;
+  inVerses.forEach(function(v){
+    if(!v || !v.reference || !v.text) return;
+    var key=(v.reference+"|"+v.text).toLowerCase();
+    if(keys[key]) return;
+    var cats=(Array.isArray(v.cats)?v.cats:[])
+      .map(function(cid){ return idMap[cid] || cid; })
+      .filter(function(cid){ return catById(cid); });
+    state.verses.unshift({ id:uid(), reference:String(v.reference), text:String(v.text), translation:v.translation?String(v.translation):"", cats:cats, added:Date.now() });
+    keys[key]=true; newVerses++;
+  });
+
+  save(); closeModal(); state.filter="all"; setView("library");
+  alert("Imported "+newVerses+" new verse"+(newVerses===1?"":"s")
+      + (newCats?(" and "+newCats+" new categor"+(newCats===1?"y":"ies")):"")
+      + ". Your collection now has "+state.verses.length+" verse"+(state.verses.length===1?"":"s")+" total.");
 }
 
 // ── Boot ────────────────────────────────────────────────────────────
