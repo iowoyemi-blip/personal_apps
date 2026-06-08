@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+<title>Hidden in My Heart</title>
+
+<!-- Home-screen / standalone app behavior on iOS -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Hidden" />
+<meta name="theme-color" content="#7a2e2e" />
+<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAAEkklEQVR4nO3d0U0bTRSG4QWlgTTiItJCpBRDARQTKS2kCDeSEvhvfiPHWeydmTNe9Pl5rqJcLIv8cjgeY3haPomXw+Ft73tgzOvx+LT3Pex2AwLOt0fgd/2AIn5c94p7+gcRMZdmxj3twkLmlhlhl19QyLSqDPu56kLLImb6VHZT8pUhZKqMTuvhCS1mKo32NBS0mJlhpKuu8V4d8uHH18rLsaPjzz+l12tdQZqDrohZwI+jIvCWqJuCHo1ZyI9rNOytUW8OeiTmWyFXf5tiPzMf6y1Rf+m++gbXPjkRZzp/XNce/9P/zXr8N03onum89smI+HFV9XBrSt8MuiJmIXNS0ca1qK8G3RqzqcwWFZ18FHXZz3KIma3Wuqg6AftwQrdMZysGvUbaWZvSqxN65IhOzLQY6WWt0+GV4/wrTMz0uHXU1+KfoEdWDajQ0tVlr90T2t5Mpct+eoflX0H37s5ipkJvR+fddk1oezOzjO7Tpe8phL29B7113TCdma1nSp/6NaGJ0hS0Yzr20NLd87L0nW5YN5ipp6+Xw+HNykEUQRNlc9BON7i3ntOOZ78shiRWDqIImiiCJoqgiTL1F808ipffv8qu9frte9m1HpEJTRRBE0XQRBE0UQRNFEETRdBEETRRBE0UQRNF0EQRNFEETRRBE0XQRBE0UQRNFEETRdBEETRRBE2U6Hd9V74b+17udc+p7y43oYkiaKIImiiCJoqgiSJoogiaKIImiqCJImiiCJoogiaKoIkiaKIImiiCJoqgiSJookS/BetebzPyhzc/DxOaKIImiqCJImiiCJoogiaKoIkiaKIImiiCJoqgiSJoogiaKIImiqCJImiiCJoogiaKoIkiaKIImiiCJoqgiSJoogiaKIImiqCJImiiCJoogiaKoIkiaKIImiiCJoqgiSJoogiaKIImiqCJImiiCJoogiaKoIkiaKIImiiCJoqgiSJoogiaKF/2voEEr9++730L/M+EJoqgiSJoogiaKIImiqCJImiiCJoogiaKoIkiaKIImiiCJoqgiSJoogiaKM+vx+PT3jcBVTZP6OPPP+//Pvz4OuVm4Nx5Z+f9XWPlIIqgifK8LMvSs0dbO5ipp6/X4/GpaUJv3WOgUkt3Vg6ivAe9de1w2sFsPacbp35NaKJ0BW1KM0vPdD73V9C9rxqKmgq9HZ13271yXH71iJoRl/30nqj9E3TLlHaMxwwtXV32Ovyk0D7NqNG9+dxq0CM/gSdqWoz0stbp1XBfDoe3rRdfuzErCR8Z7eWjoVt2Dr12M6Y1a2YOv5urRcuUPql6xkqeijaurcSbduWKqJdF2I+sqodbz+82P/mrivpE3PmqH/8thxVT/2jQ6abXPrHKoxo+j1vPm2Y/1k3Hcz1T+pwniY9rNOStR8nN582jUS+LsB9JxURueV2k6wWUiqjPCTxH9UrR+iLf0O/kqA4bTnpfrR56YcUvqWGGka6GXykUNZVGeyqN0QpCr6rBWPqeQtOaHpXdTAvQtOaWGQNw+kQVNpdmfie/64og7sd1r3V0t51X3Pn2eE71HwFegoOvX3Y8AAAAAElFTkSuQmCC" />
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap');
+
+:root{
+  --paper:#f4ecdb; --paper2:#efe6d2; --card:#fbf6ea;
+  --ink:#2c2620; --ink2:#6a5d4d; --line:#ddccab;
+  --accent:#7a2e2e; --gold:#a8843f;
+  --serif:'Newsreader','Hoefler Text',Georgia,'Times New Roman',serif;
+  --display:'Fraunces','Hoefler Text',Georgia,serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:var(--serif); color:var(--ink); min-height:100vh;
+  background:
+    radial-gradient(circle at 20% 0%, #f8f1e1 0%, transparent 55%),
+    radial-gradient(circle at 90% 100%, #efe4cd 0%, transparent 50%),
+    var(--paper);
+  padding-bottom:max(60px, env(safe-area-inset-bottom));
+}
+
+header{ padding:max(24px, env(safe-area-inset-top)) clamp(16px,5vw,40px) 0; }
+.brand{ display:flex; align-items:center; gap:14px; }
+.mark{
+  font-size:26px; color:var(--paper); background:var(--accent);
+  width:48px; height:48px; border-radius:50%; display:flex; align-items:center;
+  justify-content:center; box-shadow:0 4px 14px rgba(122,46,46,.3); flex:none;
+}
+h1{ font-family:var(--display); font-weight:600; font-size:clamp(24px,6vw,34px); margin:0; letter-spacing:-.5px;}
+.sub{ margin:2px 0 0; font-style:italic; color:var(--ink2); font-size:13px;}
+
+nav{ display:flex; gap:2px; margin-top:20px; border-bottom:1px solid var(--line); }
+.tab{
+  font-family:var(--display); font-size:16px; background:none; border:none; cursor:pointer;
+  padding:10px 16px; color:var(--ink2); position:relative;
+}
+.tab.on{ color:var(--accent); }
+.tab.on::after{ content:''; position:absolute; left:12px; right:12px; bottom:-1px; height:2.5px; background:var(--accent); border-radius:2px; }
+
+main{ padding:24px clamp(16px,5vw,40px) 0; max-width:1040px; margin:0 auto; }
+
+.toolbar{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+.search{
+  flex:1; min-width:180px; font-family:var(--serif); font-size:16px;
+  padding:11px 15px; border:1px solid var(--line); border-radius:10px; background:var(--card); color:var(--ink);
+}
+.search:focus{ outline:none; border-color:var(--gold); }
+.btn-add{
+  font-family:var(--display); font-size:15px; cursor:pointer; white-space:nowrap;
+  background:var(--accent); color:var(--paper); border:none; padding:11px 18px; border-radius:10px;
+  box-shadow:0 3px 10px rgba(122,46,46,.25);
+}
+.btn-add:active{ transform:translateY(1px); }
+
+.chips{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:22px; }
+.chip{
+  font-family:var(--serif); font-size:14px; cursor:pointer; background:var(--card);
+  border:1.5px solid var(--line); color:var(--ink); padding:6px 13px; border-radius:30px;
+}
+.count{ opacity:.6; font-size:12px; margin-left:3px; }
+
+.grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+.card{
+  background:var(--card); border:1px solid var(--line); border-top:3px solid var(--gold);
+  border-radius:14px; padding:18px 18px 14px; box-shadow:0 2px 10px rgba(60,45,20,.06); position:relative;
+}
+.card-top{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.card-top h3{ font-family:var(--display); font-size:18px; margin:0; color:var(--accent); font-weight:600;}
+.card-actions button{ background:none; border:none; cursor:pointer; color:var(--ink2); font-size:15px; padding:3px 6px; border-radius:6px; }
+.card-actions button:active{ background:var(--paper2); }
+.vtext{ font-size:17px; line-height:1.55; margin:10px 0 14px; }
+.vtext.big{ font-size:22px; line-height:1.6; }
+.vtext.hint{ letter-spacing:1px; color:var(--ink2); }
+.card-foot{ display:flex; justify-content:space-between; align-items:flex-end; gap:8px; flex-wrap:wrap; }
+.trans{ font-size:12px; font-style:italic; color:var(--ink2); letter-spacing:.5px; }
+.tags{ display:flex; flex-wrap:wrap; gap:5px; justify-content:flex-end; }
+.tag{ font-size:11px; color:#f5efe2; padding:2px 9px; border-radius:20px; }
+
+.empty{ text-align:center; padding:60px 20px; color:var(--ink2); }
+.empty-mark{ font-family:var(--display); font-size:50px; color:var(--gold); opacity:.6; margin-bottom:6px; }
+.empty p{ font-size:17px; margin:0 0 16px; }
+
+/* practice */
+.pbar{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+.pbar label{ font-size:15px; color:var(--ink2); display:flex; gap:8px; align-items:center; }
+.pbar select{ font-family:var(--serif); font-size:15px; padding:8px 12px; border-radius:9px; border:1px solid var(--line); background:var(--card); color:var(--ink); }
+.flash{
+  margin:30px auto 0; max-width:600px; background:var(--card); border:1px solid var(--line); border-top:4px solid var(--gold);
+  border-radius:18px; padding:34px 28px 24px; text-align:center; box-shadow:0 6px 26px rgba(60,45,20,.1);
+}
+.fprog{ font-size:13px; color:var(--ink2); letter-spacing:1.5px; text-transform:uppercase; }
+.fref{ font-family:var(--display); font-size:28px; color:var(--accent); font-weight:600; margin:6px 0 20px; }
+.fbody{ min-height:110px; display:flex; align-items:center; justify-content:center; }
+.prompt{ font-style:italic; color:var(--ink2); font-size:16px; }
+.ftrans{ font-size:13px; font-style:italic; color:var(--ink2); margin-top:10px; }
+.fctrl{ display:flex; gap:9px; justify-content:center; margin-top:24px; flex-wrap:wrap; }
+.btn-reveal{ font-family:var(--display); font-size:15px; cursor:pointer; background:var(--accent); color:var(--paper); border:none; padding:10px 24px; border-radius:10px; box-shadow:0 3px 10px rgba(122,46,46,.25); }
+.ghost{ font-family:var(--serif); font-size:15px; cursor:pointer; background:transparent; color:var(--ink2); border:1px solid var(--line); padding:10px 16px; border-radius:10px; }
+
+/* categories */
+.catlist{ display:flex; flex-direction:column; gap:10px; max-width:540px; }
+.catrow{ display:flex; align-items:center; gap:14px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:13px 16px; }
+.catdot{ width:14px; height:14px; border-radius:50%; flex:none; }
+.catname{ font-family:var(--display); font-size:18px; flex:1; }
+.catcount{ font-size:13px; color:var(--ink2); }
+.catdel{ font-family:var(--serif); font-size:13px; cursor:pointer; background:none; border:1px solid var(--line); color:var(--ink2); padding:5px 12px; border-radius:8px; }
+
+/* modal */
+.overlay{ position:fixed; inset:0; background:rgba(44,38,32,.45); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px); display:flex; align-items:flex-start; justify-content:center; padding:30px 14px; z-index:50; overflow:auto; }
+.modal{ background:var(--paper); border:1px solid var(--line); border-top:4px solid var(--gold); border-radius:18px; padding:26px; width:100%; max-width:500px; box-shadow:0 20px 60px rgba(40,30,15,.35); }
+.modal h2{ font-family:var(--display); font-size:23px; margin:0 0 16px; color:var(--accent); }
+.label{ display:block; font-size:13px; letter-spacing:1px; text-transform:uppercase; color:var(--ink2); margin:14px 0 6px; }
+.opt{ text-transform:none; letter-spacing:0; font-style:italic; }
+.input{ width:100%; font-family:var(--serif); font-size:16px; padding:11px 14px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--ink); }
+.input:focus{ outline:none; border-color:var(--gold); }
+textarea.input{ min-height:108px; resize:vertical; line-height:1.5; }
+.modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:22px; }
+.hidden{ display:none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="mark">✝</div>
+    <div>
+      <h1>Hidden in My Heart</h1>
+      <p class="sub">Thy word have I hid in mine heart · Psalm 119:11</p>
+    </div>
+  </div>
+  <nav>
+    <button class="tab on" id="tab-library" onclick="setView('library')">Library</button>
+    <button class="tab" id="tab-practice" onclick="setView('practice')">Practice</button>
+    <button class="tab" id="tab-categories" onclick="setView('categories')">Categories</button>
+  </nav>
+</header>
+
+<main id="app"></main>
+<div id="modal-root"></div>
+
+<script>
+// ── Storage (on-device) ─────────────────────────────────────────────
+var KEY = "scripture-memory-standalone-v1";
+var CAT_COLORS = ["#7a2e2e","#5a6b4a","#9c6b2e","#3f5a6b","#6b4a6b","#a14d3a","#4a6b5a","#8a6d2e"];
+
+var SEED = {
+  categories: [
+    { id:"seed-comfort", name:"Comfort" },
+    { id:"seed-gospel", name:"The Gospel" }
+  ],
+  verses: [
+    { id:"seed-ps23", reference:"Psalm 23:1", text:"The LORD is my shepherd; I shall not want.", translation:"KJV", cats:["seed-comfort"], added:2 },
+    { id:"seed-rom1", reference:"Romans 1:16", text:"For I am not ashamed of the gospel of Christ: for it is the power of God unto salvation to every one that believeth; to the Jew first, and also to the Greek.", translation:"KJV", cats:["seed-gospel"], added:1 }
+  ]
+};
+
+var state = {
+  view:"library", verses:[], categories:[], search:"", filter:"all",
+  form:null,
+  practice:{ cat:"all", deck:[], i:0, revealed:false, hint:false }
+};
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function load(){
+  try{
+    var raw = localStorage.getItem(KEY);
+    if(raw){ var d = JSON.parse(raw); state.verses = d.verses||[]; state.categories = d.categories||[]; return; }
+  }catch(e){}
+  state.verses = SEED.verses.slice();
+  state.categories = SEED.categories.slice();
+  save();
+}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify({ verses:state.verses, categories:state.categories })); }catch(e){}
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────
+function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function catById(id){ for(var i=0;i<state.categories.length;i++){ if(state.categories[i].id===id) return state.categories[i]; } return null; }
+function catColor(id){ var i=-1; for(var k=0;k<state.categories.length;k++){ if(state.categories[k].id===id){i=k;break;} } return CAT_COLORS[(i+CAT_COLORS.length)%CAT_COLORS.length] || "#7a2e2e"; }
+function countFor(id){ var n=0; for(var i=0;i<state.verses.length;i++){ if(state.verses[i].cats.indexOf(id)>=0) n++; } return n; }
+function firstLetters(text){
+  return text.split(/\s+/).map(function(w){
+    return w.replace(/[A-Za-z]/g, function(c, idx){ return idx===w.search(/[A-Za-z]/) ? c : "_"; });
+  }).join(" ");
+}
+
+// ── View switching ──────────────────────────────────────────────────
+function setView(v){
+  state.view = v;
+  ["library","practice","categories"].forEach(function(k){
+    document.getElementById("tab-"+k).className = "tab" + (k===v?" on":"");
+  });
+  render();
+}
+
+function render(){
+  var app = document.getElementById("app");
+  if(state.view==="library") app.innerHTML = libraryHTML();
+  else if(state.view==="practice") app.innerHTML = practiceHTML();
+  else app.innerHTML = categoriesHTML();
+}
+
+// ── Library ─────────────────────────────────────────────────────────
+function libraryHTML(){
+  var chips = "";
+  if(state.categories.length){
+    chips += '<button class="chip" style="'+(state.filter==="all"?activeChip("#7a2e2e"):"")+'" onclick="setFilter(\'all\')">All <span class="count">'+state.verses.length+'</span></button>';
+    state.categories.forEach(function(c){
+      var on = state.filter===c.id;
+      chips += '<button class="chip" style="'+(on?activeChip(catColor(c.id)):"border-color:"+catColor(c.id))+'" onclick="setFilter(\''+c.id+'\')">'+esc(c.name)+' <span class="count">'+countFor(c.id)+'</span></button>';
+    });
+  }
+  return ''
+    + '<div class="toolbar">'
+    +   '<input class="search" id="search" placeholder="Search reference or text…" value="'+esc(state.search)+'" oninput="onSearch(this.value)" />'
+    +   '<button class="btn-add" onclick="openAdd()">+ Add Verse</button>'
+    + '</div>'
+    + (chips ? '<div class="chips">'+chips+'</div>' : '')
+    + '<div id="grid">'+gridHTML()+'</div>';
+}
+function activeChip(color){ return "background:"+color+";border-color:"+color+";color:#f5efe2;"; }
+
+function gridHTML(){
+  var q = state.search.trim().toLowerCase();
+  var list = state.verses.filter(function(v){
+    if(state.filter!=="all" && v.cats.indexOf(state.filter)<0) return false;
+    if(!q) return true;
+    return v.reference.toLowerCase().indexOf(q)>=0 || v.text.toLowerCase().indexOf(q)>=0 || (v.translation||"").toLowerCase().indexOf(q)>=0;
+  });
+  if(!list.length){
+    if(state.verses.length===0)
+      return '<div class="empty"><div class="empty-mark">“ ”</div><p>Your memory deck is empty.</p><button class="btn-add" onclick="openAdd()">Add your first verse</button></div>';
+    return '<div class="empty"><div class="empty-mark">“ ”</div><p>No verses match that filter.</p></div>';
+  }
+  var out = '<div class="grid">';
+  list.forEach(function(v){
+    var tags = v.cats.map(function(cid){ var c=catById(cid); return c?'<span class="tag" style="background:'+catColor(cid)+'">'+esc(c.name)+'</span>':""; }).join("");
+    out += '<article class="card">'
+      + '<div class="card-top"><h3>'+esc(v.reference)+'</h3>'
+      +   '<div class="card-actions"><button onclick="openEdit(\''+v.id+'\')" title="Edit">✎</button><button onclick="deleteVerse(\''+v.id+'\')" title="Delete">✕</button></div></div>'
+      + '<p class="vtext">'+esc(v.text)+'</p>'
+      + '<div class="card-foot">'+(v.translation?'<span class="trans">'+esc(v.translation)+'</span>':'<span></span>')+'<div class="tags">'+tags+'</div></div>'
+      + '</article>';
+  });
+  return out + '</div>';
+}
+function onSearch(val){ state.search = val; document.getElementById("grid").innerHTML = gridHTML(); }
+function setFilter(id){ state.filter = id; render(); }
+
+// ── Practice ────────────────────────────────────────────────────────
+function practiceHTML(){
+  var opts = '<option value="all">All verses ('+state.verses.length+')</option>';
+  state.categories.forEach(function(c){ opts += '<option value="'+c.id+'"'+(state.practice.cat===c.id?" selected":"")+'>'+esc(c.name)+' ('+countFor(c.id)+')</option>'; });
+  var bar = '<div class="pbar"><label>Review:<select onchange="state.practice.cat=this.value">'+opts+'</select></label><button class="btn-add" onclick="startPractice()">Shuffle &amp; Begin</button></div>';
+
+  var p = state.practice;
+  if(!p.deck.length){
+    return bar + '<div class="empty"><div class="empty-mark">✦</div><p>Pick a set and press “Shuffle &amp; Begin” to start reciting.</p></div>';
+  }
+  var v = null; for(var i=0;i<state.verses.length;i++){ if(state.verses[i].id===p.deck[p.i]){ v=state.verses[i]; break; } }
+  if(!v){ p.deck=[]; return bar; }
+
+  var body;
+  if(p.revealed) body = '<p class="vtext big">'+esc(v.text)+'</p>';
+  else if(p.hint) body = '<p class="vtext big hint">'+esc(firstLetters(v.text))+'</p>';
+  else body = '<p class="prompt">Recite from memory, then reveal.</p>';
+
+  return bar + '<div class="flash">'
+    + '<div class="fprog">'+(p.i+1)+' / '+p.deck.length+'</div>'
+    + '<div class="fref">'+esc(v.reference)+'</div>'
+    + '<div class="fbody">'+body+'</div>'
+    + (v.translation && p.revealed ? '<div class="ftrans">'+esc(v.translation)+'</div>' : '')
+    + '<div class="fctrl">'
+    +   '<button class="ghost" onclick="prevCard()">‹ Prev</button>'
+    +   (p.revealed ? '' : '<button class="ghost" onclick="toggleHint()">'+(p.hint?"Hide hint":"Hint")+'</button>')
+    +   '<button class="btn-reveal" onclick="toggleReveal()">'+(p.revealed?"Hide":"Reveal")+'</button>'
+    +   '<button class="ghost" onclick="nextCard()">Next ›</button>'
+    + '</div></div>';
+}
+function startPractice(){
+  var p = state.practice;
+  var pool = state.verses.filter(function(v){ return p.cat==="all" || v.cats.indexOf(p.cat)>=0; });
+  p.deck = pool.map(function(v){return v.id;}).sort(function(){return Math.random()-0.5;});
+  p.i=0; p.revealed=false; p.hint=false; render();
+}
+function toggleReveal(){ state.practice.revealed=!state.practice.revealed; render(); }
+function toggleHint(){ state.practice.hint=!state.practice.hint; render(); }
+function nextCard(){ var p=state.practice; p.revealed=false; p.hint=false; p.i=(p.i+1)%p.deck.length; render(); }
+function prevCard(){ var p=state.practice; p.revealed=false; p.hint=false; p.i=(p.i-1+p.deck.length)%p.deck.length; render(); }
+
+// ── Categories ──────────────────────────────────────────────────────
+function categoriesHTML(){
+  var rows = "";
+  if(!state.categories.length){
+    rows = '<div class="empty"><div class="empty-mark">❡</div><p>No categories yet. Create ones like “Comfort,” “Promises,” or “Sunday Sermon.”</p></div>';
+  }else{
+    rows = '<div class="catlist">';
+    state.categories.forEach(function(c){
+      rows += '<div class="catrow"><span class="catdot" style="background:'+catColor(c.id)+'"></span>'
+        + '<span class="catname">'+esc(c.name)+'</span>'
+        + '<span class="catcount">'+countFor(c.id)+' '+(countFor(c.id)===1?"verse":"verses")+'</span>'
+        + '<button class="catdel" onclick="deleteCategory(\''+c.id+'\')">Delete</button></div>';
+    });
+    rows += '</div>';
+  }
+  return '<div class="toolbar">'
+    + '<input class="search" id="newcat" placeholder="New category name…" onkeydown="if(event.key===\'Enter\')addCategoryFromInput(\'newcat\')" />'
+    + '<button class="btn-add" onclick="addCategoryFromInput(\'newcat\')">+ Add Category</button></div>'
+    + rows;
+}
+function addCategory(name){
+  var n=(name||"").trim(); if(!n) return null;
+  for(var i=0;i<state.categories.length;i++){ if(state.categories[i].name.toLowerCase()===n.toLowerCase()) return state.categories[i].id; }
+  var id=uid(); state.categories.push({id:id,name:n}); save(); return id;
+}
+function addCategoryFromInput(inputId){
+  var el=document.getElementById(inputId); if(!el) return;
+  addCategory(el.value); el.value=""; render();
+}
+function deleteCategory(id){
+  if(!confirm("Delete this category? Verses stay, but lose this tag.")) return;
+  state.categories = state.categories.filter(function(c){return c.id!==id;});
+  state.verses = state.verses.map(function(v){ v.cats=v.cats.filter(function(c){return c!==id;}); return v; });
+  if(state.filter===id) state.filter="all";
+  if(state.practice.cat===id) state.practice.cat="all";
+  save(); render();
+}
+
+// ── Add / Edit modal ────────────────────────────────────────────────
+function openAdd(){ state.form={ editId:null, reference:"", text:"", translation:"", cats:[] }; renderModal(); }
+function openEdit(id){
+  var v=null; for(var i=0;i<state.verses.length;i++){ if(state.verses[i].id===id){v=state.verses[i];break;} }
+  if(!v) return;
+  state.form={ editId:id, reference:v.reference, text:v.text, translation:v.translation||"", cats:v.cats.slice() };
+  renderModal();
+}
+function closeForm(){ state.form=null; document.getElementById("modal-root").innerHTML=""; }
+
+function renderModal(){
+  var f=state.form; if(!f) return;
+  var chips = state.categories.map(function(c){
+    var on=f.cats.indexOf(c.id)>=0;
+    return '<button type="button" id="fchip-'+c.id+'" class="chip" style="'+(on?activeChip(catColor(c.id)):"border-color:"+catColor(c.id))+'" onclick="toggleFormCat(\''+c.id+'\')">'+esc(c.name)+'</button>';
+  }).join("");
+  document.getElementById("modal-root").innerHTML =
+    '<div class="overlay" onclick="if(event.target===this)closeForm()"><div class="modal">'
+    + '<h2>'+(f.editId?"Edit Verse":"Add a Verse")+'</h2>'
+    + '<label class="label">Reference</label><input class="input" id="f-ref" placeholder="e.g. John 3:16" value="'+esc(f.reference)+'" />'
+    + '<label class="label">Verse text</label><textarea class="input" id="f-text" placeholder="Paste or type the verse…">'+esc(f.text)+'</textarea>'
+    + '<label class="label">Translation <span class="opt">(optional)</span></label><input class="input" id="f-trans" placeholder="e.g. ESV, KJV, NASB" value="'+esc(f.translation)+'" />'
+    + '<label class="label">Categories</label>'
+    + (chips?'<div class="chips" style="margin-bottom:10px">'+chips+'</div>':'')
+    + '<input class="input" id="f-newcat" placeholder="…or type a new category to create it" />'
+    + '<div class="modal-actions"><button class="ghost" onclick="closeForm()">Cancel</button><button class="btn-add" onclick="saveVerse()">'+(f.editId?"Save Changes":"Add Verse")+'</button></div>'
+    + '</div></div>';
+}
+function toggleFormCat(id){
+  var f=state.form; var idx=f.cats.indexOf(id);
+  var btn=document.getElementById("fchip-"+id);
+  if(idx>=0){ f.cats.splice(idx,1); btn.setAttribute("style","border-color:"+catColor(id)); }
+  else { f.cats.push(id); btn.setAttribute("style", activeChip(catColor(id))); }
+}
+function saveVerse(){
+  var f=state.form;
+  var ref=document.getElementById("f-ref").value.trim();
+  var text=document.getElementById("f-text").value.trim();
+  var trans=document.getElementById("f-trans").value.trim();
+  var newcat=document.getElementById("f-newcat").value.trim();
+  if(!ref || !text){ alert("Please enter both a reference and the verse text."); return; }
+  var cats=f.cats.slice();
+  if(newcat){ var nid=addCategory(newcat); if(nid && cats.indexOf(nid)<0) cats.push(nid); }
+  if(f.editId){
+    state.verses = state.verses.map(function(v){
+      if(v.id===f.editId){ v.reference=ref; v.text=text; v.translation=trans; v.cats=cats; }
+      return v;
+    });
+  }else{
+    state.verses.unshift({ id:uid(), reference:ref, text:text, translation:trans, cats:cats, added:Date.now() });
+  }
+  save(); closeForm(); render();
+}
+function deleteVerse(id){
+  if(!confirm("Remove this verse from your memory deck?")) return;
+  state.verses = state.verses.filter(function(v){return v.id!==id;});
+  save(); render();
+}
+
+// ── Boot ────────────────────────────────────────────────────────────
+load();
+render();
+</script>
+</body>
+</html>
