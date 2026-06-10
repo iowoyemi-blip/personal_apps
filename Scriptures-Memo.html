@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
 <title>Hidden in My Heart</title>
 
-<!-- Home-screen / standalone app behavior on iOS -->
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -54,12 +53,18 @@ nav{ display:flex; gap:2px; margin-top:20px; border-bottom:1px solid var(--line)
 
 main{ padding:24px clamp(16px,5vw,40px) 0; max-width:1040px; margin:0 auto; }
 
-.toolbar{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+.toolbar{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; align-items:center;}
 .search{
   flex:1; min-width:180px; font-family:var(--serif); font-size:16px;
   padding:11px 15px; border:1px solid var(--line); border-radius:10px; background:var(--card); color:var(--ink);
 }
 .search:focus{ outline:none; border-color:var(--gold); }
+
+/* View Toggle Styles */
+.view-tabs { display:inline-flex; background:var(--paper2); padding:3px; border-radius:10px; }
+.vtab { font-family:var(--serif); font-size:14px; color:var(--ink2); border:none; background:none; padding:8px 16px; border-radius:7px; cursor:pointer; transition:all 0.2s; }
+.vtab.active { background:var(--card); color:var(--ink); font-weight:500; box-shadow:0 1px 4px rgba(60,45,20,.1); }
+
 .btn-add{
   font-family:var(--display); font-size:15px; cursor:pointer; white-space:nowrap;
   background:var(--accent); color:var(--paper); border:none; padding:11px 18px; border-radius:10px;
@@ -83,9 +88,17 @@ main{ padding:24px clamp(16px,5vw,40px) 0; max-width:1040px; margin:0 auto; }
 .card-top h3{ font-family:var(--display); font-size:18px; margin:0; color:var(--accent); font-weight:600;}
 .card-actions button{ background:none; border:none; cursor:pointer; color:var(--ink2); font-size:15px; padding:3px 6px; border-radius:6px; }
 .card-actions button:active{ background:var(--paper2); }
+
+/* Testimony & Scripture typography */
 .vtext{ font-size:17px; line-height:1.55; margin:10px 0 14px; }
 .vtext.big{ font-size:22px; line-height:1.6; }
 .vtext.hint{ letter-spacing:1px; color:var(--ink2); }
+
+.testimony-box { margin-top: 14px; margin-bottom: 14px; padding: 12px 14px; background: rgba(168, 132, 63, 0.08); border-left: 3px solid var(--gold); border-radius: 0 8px 8px 0; font-size: 15px; color: var(--ink2); line-height: 1.5; }
+.testimony-primary { font-size: 17px; line-height: 1.6; color: var(--ink); margin:10px 0 14px; }
+.scripture-supportive { font-size: 15px; color: var(--ink2); padding-top: 12px; margin-bottom: 14px; border-top: 1px solid var(--line); font-style: italic; line-height:1.5;}
+.scripture-supportive strong { color: var(--accent); font-style: normal; font-family: var(--display); font-size:16px; }
+
 .card-foot{ display:flex; justify-content:space-between; align-items:flex-end; gap:8px; flex-wrap:wrap; }
 .trans{ font-size:12px; font-style:italic; color:var(--ink2); letter-spacing:.5px; }
 .tags{ display:flex; flex-wrap:wrap; gap:5px; justify-content:flex-end; }
@@ -181,6 +194,7 @@ var SEED = {
 
 var state = {
   view:"library", verses:[], categories:[], search:"", filter:"all",
+  viewMode: "scripture", // "scripture" or "testimony"
   form:null,
   practice:{ cat:"all", deck:[], i:0, revealed:false, hint:false }
 };
@@ -220,6 +234,11 @@ function setView(v){
   render();
 }
 
+function setViewMode(mode){
+  state.viewMode = mode;
+  render();
+}
+
 function render(){
   var app = document.getElementById("app");
   if(state.view==="library") app.innerHTML = libraryHTML();
@@ -237,9 +256,16 @@ function libraryHTML(){
       chips += '<button class="chip" style="'+(on?activeChip(catColor(c.id)):"border-color:"+catColor(c.id))+'" onclick="setFilter(\''+c.id+'\')">'+esc(c.name)+' <span class="count">'+countFor(c.id)+'</span></button>';
     });
   }
+
+  var toggleTabs = '<div class="view-tabs">'
+    + '<button class="vtab '+(state.viewMode==='scripture'?'active':'')+'" onclick="setViewMode(\'scripture\')">Scriptures</button>'
+    + '<button class="vtab '+(state.viewMode==='testimony'?'active':'')+'" onclick="setViewMode(\'testimony\')">Testimonies</button>'
+    + '</div>';
+
   return ''
     + '<div class="toolbar">'
     +   '<input class="search" id="search" placeholder="Search reference or text…" value="'+esc(state.search)+'" oninput="onSearch(this.value)" />'
+    +   toggleTabs
     +   '<button class="btn-add" onclick="openAdd()">+ Add Verse</button>'
     + '</div>'
     + (chips ? '<div class="chips">'+chips+'</div>' : '')
@@ -251,21 +277,46 @@ function gridHTML(){
   var q = state.search.trim().toLowerCase();
   var list = state.verses.filter(function(v){
     if(state.filter!=="all" && v.cats.indexOf(state.filter)<0) return false;
+    
+    // In Testimony Mode, hide verses that don't have a testimony attached
+    var hasTestimony = v.testimony && v.testimony.trim().length > 0;
+    if(state.viewMode === 'testimony' && !hasTestimony) return false;
+
     if(!q) return true;
-    return v.reference.toLowerCase().indexOf(q)>=0 || v.text.toLowerCase().indexOf(q)>=0 || (v.translation||"").toLowerCase().indexOf(q)>=0;
+    return v.reference.toLowerCase().indexOf(q)>=0 || v.text.toLowerCase().indexOf(q)>=0 || (v.translation||"").toLowerCase().indexOf(q)>=0 || (v.testimony||"").toLowerCase().indexOf(q)>=0;
   });
+  
   if(!list.length){
     if(state.verses.length===0)
       return '<div class="empty"><div class="empty-mark">“ ”</div><p>Your memory deck is empty.</p><button class="btn-add" onclick="openAdd()">Add your first verse</button></div>';
+    if(state.viewMode === 'testimony')
+      return '<div class="empty"><div class="empty-mark">✎</div><p>No testimonies recorded yet.<br>Edit a verse to add your backstory or personal anchor.</p></div>';
     return '<div class="empty"><div class="empty-mark">“ ”</div><p>No verses match that filter.</p></div>';
   }
   var out = '<div class="grid">';
   list.forEach(function(v){
     var tags = v.cats.map(function(cid){ var c=catById(cid); return c?'<span class="tag" style="background:'+catColor(cid)+'">'+esc(c.name)+'</span>':""; }).join("");
+    var hasTestimony = v.testimony && v.testimony.trim().length > 0;
+    
+    var contentHtml = '';
+    if (state.viewMode === 'testimony') {
+       // Testimony Prioritized
+       contentHtml += '<div class="card-top"><h3>'+esc(v.reference)+'</h3>'
+         +   '<div class="card-actions"><button onclick="openEdit(\''+v.id+'\')" title="Edit">✎</button><button onclick="deleteVerse(\''+v.id+'\')" title="Delete">✕</button></div></div>';
+       contentHtml += '<p class="testimony-primary">' + esc(v.testimony).replace(/\n/g, '<br>') + '</p>';
+       contentHtml += '<div class="scripture-supportive"><strong>' + esc(v.reference) + '</strong> &mdash; ' + esc(v.text) + '</div>';
+    } else {
+       // Scripture Prioritized
+       contentHtml += '<div class="card-top"><h3>'+esc(v.reference)+'</h3>'
+         +   '<div class="card-actions"><button onclick="openEdit(\''+v.id+'\')" title="Edit">✎</button><button onclick="deleteVerse(\''+v.id+'\')" title="Delete">✕</button></div></div>';
+       contentHtml += '<p class="vtext">' + esc(v.text) + '</p>';
+       if (hasTestimony) {
+          contentHtml += '<div class="testimony-box">' + esc(v.testimony).replace(/\n/g, '<br>') + '</div>';
+       }
+    }
+
     out += '<article class="card">'
-      + '<div class="card-top"><h3>'+esc(v.reference)+'</h3>'
-      +   '<div class="card-actions"><button onclick="openEdit(\''+v.id+'\')" title="Edit">✎</button><button onclick="deleteVerse(\''+v.id+'\')" title="Delete">✕</button></div></div>'
-      + '<p class="vtext">'+esc(v.text)+'</p>'
+      + contentHtml
       + '<div class="card-foot">'+(v.translation?'<span class="trans">'+esc(v.translation)+'</span>':'<span></span>')+'<div class="tags">'+tags+'</div></div>'
       + '</article>';
   });
@@ -354,11 +405,11 @@ function deleteCategory(id){
 }
 
 // ── Add / Edit modal ────────────────────────────────────────────────
-function openAdd(){ state.form={ editId:null, reference:"", text:"", translation:"", cats:[] }; renderModal(); }
+function openAdd(){ state.form={ editId:null, reference:"", text:"", translation:"", testimony:"", cats:[] }; renderModal(); }
 function openEdit(id){
   var v=null; for(var i=0;i<state.verses.length;i++){ if(state.verses[i].id===id){v=state.verses[i];break;} }
   if(!v) return;
-  state.form={ editId:id, reference:v.reference, text:v.text, translation:v.translation||"", cats:v.cats.slice() };
+  state.form={ editId:id, reference:v.reference, text:v.text, translation:v.translation||"", testimony:v.testimony||"", cats:v.cats.slice() };
   renderModal();
 }
 function closeForm(){ state.form=null; document.getElementById("modal-root").innerHTML=""; }
@@ -375,6 +426,7 @@ function renderModal(){
     + '<label class="label">Reference</label><input class="input" id="f-ref" placeholder="e.g. John 3:16" value="'+esc(f.reference)+'" />'
     + '<label class="label">Verse text</label><textarea class="input" id="f-text" placeholder="Paste or type the verse…">'+esc(f.text)+'</textarea>'
     + '<label class="label">Translation <span class="opt">(optional)</span></label><input class="input" id="f-trans" placeholder="e.g. ESV, KJV, NASB" value="'+esc(f.translation)+'" />'
+    + '<label class="label">Personal Testimony / Backstory <span class="opt">(optional)</span></label><textarea class="input" id="f-testimony" placeholder="Why is this an anchor for you? What situation were you facing?">'+esc(f.testimony)+'</textarea>'
     + '<label class="label">Categories</label>'
     + (chips?'<div class="chips" style="margin-bottom:10px">'+chips+'</div>':'')
     + '<input class="input" id="f-newcat" placeholder="…or type a new category to create it" />'
@@ -392,17 +444,18 @@ function saveVerse(){
   var ref=document.getElementById("f-ref").value.trim();
   var text=document.getElementById("f-text").value.trim();
   var trans=document.getElementById("f-trans").value.trim();
+  var testimony=document.getElementById("f-testimony").value.trim();
   var newcat=document.getElementById("f-newcat").value.trim();
   if(!ref || !text){ alert("Please enter both a reference and the verse text."); return; }
   var cats=f.cats.slice();
   if(newcat){ var nid=addCategory(newcat); if(nid && cats.indexOf(nid)<0) cats.push(nid); }
   if(f.editId){
     state.verses = state.verses.map(function(v){
-      if(v.id===f.editId){ v.reference=ref; v.text=text; v.translation=trans; v.cats=cats; }
+      if(v.id===f.editId){ v.reference=ref; v.text=text; v.translation=trans; v.testimony=testimony; v.cats=cats; }
       return v;
     });
   }else{
-    state.verses.unshift({ id:uid(), reference:ref, text:text, translation:trans, cats:cats, added:Date.now() });
+    state.verses.unshift({ id:uid(), reference:ref, text:text, translation:trans, testimony:testimony, cats:cats, added:Date.now() });
   }
   save(); closeForm(); render();
 }
@@ -518,7 +571,9 @@ function doImport(){
     var cats=(Array.isArray(v.cats)?v.cats:[])
       .map(function(cid){ return idMap[cid] || cid; })
       .filter(function(cid){ return catById(cid); });
-    state.verses.unshift({ id:uid(), reference:String(v.reference), text:String(v.text), translation:v.translation?String(v.translation):"", cats:cats, added:Date.now() });
+    // Make sure we carry over testimony if present in the imported JSON
+    var testm = v.testimony ? String(v.testimony) : "";
+    state.verses.unshift({ id:uid(), reference:String(v.reference), text:String(v.text), translation:v.translation?String(v.translation):"", testimony:testm, cats:cats, added:Date.now() });
     keys[key]=true; newVerses++;
   });
 
