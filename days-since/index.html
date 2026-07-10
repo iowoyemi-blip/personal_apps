@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1d5f8c">
+  <title>Days Since</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --background: #f3f6f5;
+      --surface: #ffffff;
+      --ink: #14191d;
+      --muted: #55636b;
+      --line: #cdd7db;
+      --blue: #1d5f8c;
+      --blue-dark: #174a6e;
+      --green: #247348;
+      --red: #b8322d;
+      --amber: #d4871f;
+      --shadow: 0 12px 28px rgba(20, 25, 29, 0.08);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+      color: var(--ink);
+      background: var(--background);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app {
+      width: min(100%, 760px);
+      margin: 0 auto;
+      padding: max(18px, env(safe-area-inset-top)) 18px max(28px, env(safe-area-inset-bottom));
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 44px 1fr 44px;
+      align-items: center;
+      min-height: 56px;
+      margin-bottom: 18px;
+    }
+
+    .title {
+      margin: 0;
+      text-align: center;
+      font-size: 1.06rem;
+      font-weight: 780;
+      letter-spacing: 0;
+    }
+
+    .icon-button {
+      display: inline-grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border: 0;
+      border-radius: 50%;
+      color: var(--ink);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      font-size: 1.45rem;
+      font-weight: 700;
+    }
+
+    .icon-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+
+    .summary {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+      padding-top: 8px;
+    }
+
+    .summary h2 {
+      margin: 0 0 5px;
+      font-size: clamp(1.35rem, 8vw, 1.7rem);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .summary p,
+    .card-date,
+    .card-note,
+    .updated {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .summary-stat {
+      min-width: 112px;
+      text-align: right;
+    }
+
+    .stat-value,
+    .days-value {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-value {
+      display: block;
+      font-size: clamp(1.55rem, 9vw, 2.05rem);
+      font-weight: 830;
+      line-height: 1;
+      overflow-wrap: anywhere;
+    }
+
+    .stat-label {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 760;
+      text-transform: uppercase;
+    }
+
+    .stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .panel,
+    .date-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .panel,
+    .date-card {
+      padding: 16px;
+    }
+
+    .empty-title {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin: 0 0 10px;
+      color: var(--blue);
+      font-weight: 760;
+    }
+
+    .empty-copy {
+      margin: 0 0 16px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .card-head {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .card-title {
+      margin: 0 0 5px;
+      font-size: 1.08rem;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .menu-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .small-action {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0 11px;
+      color: var(--ink);
+      background: #f8faf9;
+      font-size: 0.86rem;
+      font-weight: 720;
+    }
+
+    .small-action.danger {
+      color: var(--red);
+    }
+
+    .days-box {
+      display: grid;
+      grid-template-columns: 1fr;
+      justify-items: center;
+      gap: 6px;
+      padding: 16px;
+      border-radius: 8px;
+      background: #f5f8fa;
+      border: 1px solid #dce4e8;
+    }
+
+    .days-value {
+      font-size: clamp(3.25rem, 20vw, 5.35rem);
+      font-weight: 880;
+      line-height: 0.92;
+      color: var(--blue);
+      overflow-wrap: anywhere;
+    }
+
+    .days-label {
+      color: var(--muted);
+      font-size: 0.83rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .card-note {
+      margin-top: 12px;
+      line-height: 1.4;
+    }
+
+    .updated {
+      margin-top: 8px;
+      font-size: 0.82rem;
+    }
+
+    .primary,
+    .secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 46px;
+      border-radius: 8px;
+      padding: 0 16px;
+      font-weight: 760;
+    }
+
+    .primary {
+      border: 0;
+      color: #fff;
+      background: var(--blue);
+    }
+
+    .primary:hover {
+      background: var(--blue-dark);
+    }
+
+    .secondary {
+      border: 1px solid var(--line);
+      color: var(--blue);
+      background: var(--surface);
+    }
+
+    .primary:disabled,
+    .secondary:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    dialog {
+      width: min(calc(100% - 32px), 480px);
+      border: 0;
+      border-radius: 12px;
+      padding: 0;
+      color: var(--ink);
+      background: var(--surface);
+      box-shadow: 0 24px 80px rgba(20, 25, 29, 0.28);
+    }
+
+    dialog::backdrop {
+      background: rgba(20, 25, 29, 0.42);
+    }
+
+    .dialog-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .dialog-header h2 {
+      margin: 0;
+      font-size: 1.08rem;
+    }
+
+    .close-button {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      color: var(--ink);
+      background: #f8faf9;
+      font-weight: 800;
+    }
+
+    .form-body {
+      display: grid;
+      gap: 16px;
+      padding: 18px;
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      font-weight: 750;
+    }
+
+    .field-note,
+    .form-error {
+      font-size: 0.86rem;
+      font-weight: 500;
+    }
+
+    .field-note {
+      color: var(--muted);
+    }
+
+    .form-error {
+      min-height: 1.2em;
+      color: var(--red);
+    }
+
+    input {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 11px;
+      color: var(--ink);
+      background: #fbfcfb;
+    }
+
+    input:focus {
+      outline: 3px solid rgba(29, 95, 140, 0.18);
+      border-color: var(--blue);
+    }
+
+    .dialog-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      padding: 0 18px 18px;
+    }
+
+    .dialog-actions .primary,
+    .dialog-actions .secondary {
+      width: auto;
+      min-width: 112px;
+    }
+
+    @media (max-width: 520px) {
+      .card-head {
+        display: grid;
+      }
+
+      .menu-row {
+        justify-content: flex-start;
+      }
+
+      .dialog-actions {
+        flex-direction: column-reverse;
+      }
+
+      .dialog-actions .primary,
+      .dialog-actions .secondary {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <span aria-hidden="true"></span>
+      <h1 class="title">Days Since</h1>
+      <button class="icon-button" id="topAddButton" type="button" aria-label="Add date card">+</button>
+    </header>
+
+    <section class="summary" aria-label="Days since summary">
+      <div>
+        <h2>Your Date Cards</h2>
+        <p id="savedCount">0 saved</p>
+      </div>
+      <div class="summary-stat" aria-live="polite">
+        <span class="stat-value" id="oldestValue">0</span>
+        <span class="stat-label">Oldest</span>
+      </div>
+    </section>
+
+    <section class="stack" id="cardStack" aria-live="polite"></section>
+  </main>
+
+  <dialog id="dateDialog">
+    <form method="dialog" id="dateForm">
+      <div class="dialog-header">
+        <h2 id="dialogTitle">Add Date</h2>
+        <button class="close-button" value="cancel" type="button" id="closeDialog" aria-label="Close">x</button>
+      </div>
+      <div class="form-body">
+        <label>
+          Card Name
+          <input id="cardTitle" name="cardTitle" maxlength="80" autocomplete="off" required>
+        </label>
+        <label>
+          Starting Date
+          <input id="startDate" name="startDate" type="date" required>
+          <span class="field-note">The day count updates automatically from this date.</span>
+        </label>
+        <p class="form-error" id="formError" role="alert"></p>
+      </div>
+      <div class="dialog-actions">
+        <button class="secondary" value="cancel" type="button" id="cancelDialog">Cancel</button>
+        <button class="primary" value="default" type="submit">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <template id="emptyTemplate">
+    <article class="panel">
+      <p class="empty-title"><span aria-hidden="true">●</span> No date cards yet</p>
+      <p class="empty-copy">Add a date you want to remember, and the app will keep showing how many days have passed.</p>
+      <button class="primary" type="button" data-action="add">+ Add Date Card</button>
+    </article>
+  </template>
+
+  <template id="cardTemplate">
+    <article class="date-card">
+      <div class="card-head">
+        <div>
+          <h3 class="card-title"></h3>
+          <p class="card-date"></p>
+        </div>
+        <div class="menu-row">
+          <button class="small-action" type="button" data-action="edit">Edit</button>
+          <button class="small-action danger" type="button" data-action="delete">Delete</button>
+        </div>
+      </div>
+      <div class="days-box">
+        <span class="days-value"></span>
+        <span class="days-label"></span>
+      </div>
+      <p class="card-note"></p>
+      <p class="updated"></p>
+    </article>
+  </template>
+
+  <script>
+    const STORAGE_KEY = "isaac-days-since-cards-v1";
+    const MAX_CARDS = 24;
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+    const stack = document.querySelector("#cardStack");
+    const savedCount = document.querySelector("#savedCount");
+    const oldestValue = document.querySelector("#oldestValue");
+    const topAddButton = document.querySelector("#topAddButton");
+    const dialog = document.querySelector("#dateDialog");
+    const form = document.querySelector("#dateForm");
+    const dialogTitle = document.querySelector("#dialogTitle");
+    const titleInput = document.querySelector("#cardTitle");
+    const dateInput = document.querySelector("#startDate");
+    const formError = document.querySelector("#formError");
+    const closeDialog = document.querySelector("#closeDialog");
+    const cancelDialog = document.querySelector("#cancelDialog");
+    const emptyTemplate = document.querySelector("#emptyTemplate");
+    const cardTemplate = document.querySelector("#cardTemplate");
+
+    let cards = loadCards();
+    let editingId = null;
+
+    function makeId() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return window.crypto.randomUUID();
+      }
+      return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function todayISO() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function parseLocalDate(dateString) {
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString || "");
+      if (!match) {
+        return null;
+      }
+      const year = Number(match[1]);
+      const month = Number(match[2]) - 1;
+      const day = Number(match[3]);
+      const date = new Date(year, month, day);
+      if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) {
+        return null;
+      }
+      return date;
+    }
+
+    function isValidPastOrToday(dateString) {
+      const date = parseLocalDate(dateString);
+      if (!date) {
+        return false;
+      }
+      return date <= parseLocalDate(todayISO());
+    }
+
+    function displayTitle(card) {
+      const trimmed = String(card.title || "").trim();
+      return trimmed.length > 0 ? trimmed : "Date Card";
+    }
+
+    function daysSince(dateString) {
+      const start = parseLocalDate(dateString);
+      const today = parseLocalDate(todayISO());
+      if (!start || !today) {
+        return 0;
+      }
+      return Math.max(0, Math.floor((today - start) / ONE_DAY_MS));
+    }
+
+    function formatNumber(value) {
+      return new Intl.NumberFormat().format(value);
+    }
+
+    function formatDate(dateString) {
+      const date = parseLocalDate(dateString);
+      if (!date) {
+        return "Unknown date";
+      }
+      return new Intl.DateTimeFormat(undefined, {
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+      }).format(date);
+    }
+
+    function relativeTime(isoDate) {
+      const seconds = Math.round((Date.parse(isoDate) - Date.now()) / 1000);
+      const absoluteSeconds = Math.abs(seconds);
+      const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto", style: "short" });
+      if (absoluteSeconds < 60) {
+        return formatter.format(seconds, "second");
+      }
+      const minutes = Math.round(seconds / 60);
+      if (Math.abs(minutes) < 60) {
+        return formatter.format(minutes, "minute");
+      }
+      const hours = Math.round(minutes / 60);
+      if (Math.abs(hours) < 24) {
+        return formatter.format(hours, "hour");
+      }
+      const days = Math.round(hours / 24);
+      return formatter.format(days, "day");
+    }
+
+    function loadCards() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          return [];
+        }
+        const decoded = JSON.parse(raw);
+        if (!Array.isArray(decoded)) {
+          return [];
+        }
+        return decoded
+          .slice(0, MAX_CARDS)
+          .filter((card) => isValidPastOrToday(card.startDate))
+          .map((card) => ({
+            id: String(card.id || makeId()),
+            title: String(card.title || "Date Card"),
+            startDate: card.startDate,
+            updatedAt: Number.isFinite(Date.parse(card.updatedAt)) ? card.updatedAt : new Date().toISOString(),
+            createdAt: Number.isFinite(Date.parse(card.createdAt)) ? card.createdAt : new Date().toISOString()
+          }))
+          .sort((a, b) => daysSince(b.startDate) - daysSince(a.startDate));
+      } catch {
+        return [];
+      }
+    }
+
+    function persist() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+    }
+
+    function sortAndPersist() {
+      cards.sort((a, b) => daysSince(b.startDate) - daysSince(a.startDate));
+      persist();
+      render();
+    }
+
+    function nextDefaultTitle() {
+      return `Date Card ${Math.min(cards.length + 1, MAX_CARDS)}`;
+    }
+
+    function addCard(data) {
+      if (cards.length >= MAX_CARDS) {
+        return;
+      }
+      const now = new Date().toISOString();
+      cards.push({
+        id: makeId(),
+        title: data.title,
+        startDate: data.startDate,
+        createdAt: now,
+        updatedAt: now
+      });
+      sortAndPersist();
+    }
+
+    function updateCard(id, data) {
+      const index = cards.findIndex((card) => card.id === id);
+      if (index === -1) {
+        return;
+      }
+      cards[index] = {
+        ...cards[index],
+        title: data.title,
+        startDate: data.startDate,
+        updatedAt: new Date().toISOString()
+      };
+      sortAndPersist();
+    }
+
+    function deleteCard(id) {
+      const card = cards.find((item) => item.id === id);
+      if (!card) {
+        return;
+      }
+      if (!window.confirm(`Delete ${displayTitle(card)}?`)) {
+        return;
+      }
+      cards = cards.filter((item) => item.id !== id);
+      persist();
+      render();
+    }
+
+    function openEditor(card = null) {
+      editingId = card ? card.id : null;
+      dialogTitle.textContent = card ? "Edit Date Card" : "Add Date Card";
+      titleInput.value = card ? displayTitle(card) : nextDefaultTitle();
+      dateInput.max = todayISO();
+      dateInput.value = card ? card.startDate : todayISO();
+      formError.textContent = "";
+      dialog.showModal();
+      titleInput.focus();
+      titleInput.select();
+    }
+
+    function closeEditor() {
+      dialog.close();
+      editingId = null;
+      form.reset();
+      formError.textContent = "";
+    }
+
+    function readForm() {
+      const title = titleInput.value.trim() || "Date Card";
+      const startDate = dateInput.value;
+      if (!isValidPastOrToday(startDate)) {
+        formError.textContent = "Choose a real date that is today or earlier.";
+        return null;
+      }
+      return { title, startDate };
+    }
+
+    function cardNote(dayCount, dateString) {
+      if (dayCount === 0) {
+        return "This date is today.";
+      }
+      if (dayCount === 1) {
+        return `One day has passed since ${formatDate(dateString)}.`;
+      }
+      return `${formatNumber(dayCount)} days have passed since ${formatDate(dateString)}.`;
+    }
+
+    function render() {
+      stack.replaceChildren();
+      savedCount.textContent = `${cards.length} saved`;
+      const oldest = cards.reduce((max, card) => Math.max(max, daysSince(card.startDate)), 0);
+      oldestValue.textContent = formatNumber(oldest);
+      topAddButton.disabled = cards.length >= MAX_CARDS;
+
+      if (cards.length === 0) {
+        stack.append(emptyTemplate.content.cloneNode(true));
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      cards.forEach((card) => {
+        const dayCount = daysSince(card.startDate);
+        const node = cardTemplate.content.cloneNode(true);
+        const article = node.querySelector(".date-card");
+        const title = node.querySelector(".card-title");
+        const date = node.querySelector(".card-date");
+        const days = node.querySelector(".days-value");
+        const label = node.querySelector(".days-label");
+        const note = node.querySelector(".card-note");
+        const updated = node.querySelector(".updated");
+
+        article.dataset.id = card.id;
+        title.textContent = displayTitle(card);
+        date.textContent = formatDate(card.startDate);
+        days.textContent = formatNumber(dayCount);
+        days.setAttribute("aria-label", `${dayCount} days since ${displayTitle(card)}`);
+        label.textContent = dayCount === 1 ? "Day Since" : "Days Since";
+        note.textContent = cardNote(dayCount, card.startDate);
+        updated.textContent = `Updated ${relativeTime(card.updatedAt)}`;
+        fragment.append(node);
+      });
+
+      if (cards.length < MAX_CARDS) {
+        const addButton = document.createElement("button");
+        addButton.className = "secondary";
+        addButton.type = "button";
+        addButton.dataset.action = "add";
+        addButton.textContent = "+ Add Date Card";
+        fragment.append(addButton);
+      }
+
+      stack.append(fragment);
+    }
+
+    stack.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) {
+        return;
+      }
+
+      const action = button.dataset.action;
+      const cardElement = button.closest(".date-card");
+      const id = cardElement ? cardElement.dataset.id : null;
+      const card = id ? cards.find((item) => item.id === id) : null;
+
+      if (action === "add") {
+        openEditor();
+      } else if (action === "edit" && card) {
+        openEditor(card);
+      } else if (action === "delete" && id) {
+        deleteCard(id);
+      }
+    });
+
+    topAddButton.addEventListener("click", () => openEditor());
+    closeDialog.addEventListener("click", closeEditor);
+    cancelDialog.addEventListener("click", closeEditor);
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const data = readForm();
+      if (!data) {
+        return;
+      }
+      if (editingId) {
+        updateCard(editingId, data);
+      } else {
+        addCard(data);
+      }
+      closeEditor();
+    });
+
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) {
+        closeEditor();
+      }
+    });
+
+    render();
+    window.setInterval(render, 60 * 1000);
+  </script>
+</body>
+</html>
