@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1a6e49">
+  <title>Counter</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --background: #f2f4f1;
+      --surface: #ffffff;
+      --ink: #13171b;
+      --muted: #566166;
+      --line: #cdd5d2;
+      --green: #1a6e49;
+      --green-dark: #125237;
+      --red: #ba302b;
+      --shadow: 0 12px 28px rgba(19, 23, 27, 0.08);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+      color: var(--ink);
+      background: var(--background);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app {
+      width: min(100%, 720px);
+      margin: 0 auto;
+      padding: max(18px, env(safe-area-inset-top)) 18px max(28px, env(safe-area-inset-bottom));
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 44px 1fr 44px;
+      align-items: center;
+      min-height: 56px;
+      margin-bottom: 18px;
+    }
+
+    .title {
+      margin: 0;
+      text-align: center;
+      font-size: 1.05rem;
+      font-weight: 750;
+      letter-spacing: 0;
+    }
+
+    .icon-button {
+      display: inline-grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border: 0;
+      border-radius: 50%;
+      color: var(--ink);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .icon-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+
+    .summary {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+      padding-top: 8px;
+    }
+
+    .summary h2 {
+      margin: 0 0 4px;
+      font-size: clamp(1.35rem, 8vw, 1.65rem);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .summary p,
+    .total-label,
+    .counter-meta,
+    .updated {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .total {
+      min-width: 112px;
+      text-align: right;
+    }
+
+    .total-value,
+    .counter-value {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .total-value {
+      display: block;
+      font-size: clamp(1.55rem, 9vw, 2.05rem);
+      font-weight: 800;
+      line-height: 1;
+      overflow-wrap: anywhere;
+    }
+
+    .total-label {
+      display: block;
+      margin-top: 5px;
+      font-size: 0.72rem;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+
+    .stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .panel,
+    .counter-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .panel,
+    .counter-card {
+      padding: 16px;
+    }
+
+    .empty-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 10px;
+      color: var(--green);
+      font-weight: 750;
+    }
+
+    .empty-copy {
+      margin: 0 0 16px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .counter-head {
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .counter-name {
+      margin: 0 0 5px;
+      font-size: 1.05rem;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .menu-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .small-action {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0 11px;
+      color: var(--ink);
+      background: #f8faf9;
+      font-size: 0.86rem;
+      font-weight: 700;
+    }
+
+    .small-action.danger {
+      color: var(--red);
+    }
+
+    .counter-value {
+      display: block;
+      width: 100%;
+      margin: 14px 0 16px;
+      text-align: center;
+      font-size: clamp(3.2rem, 19vw, 5rem);
+      font-weight: 850;
+      line-height: 0.95;
+      overflow-wrap: anywhere;
+    }
+
+    .counter-controls {
+      display: flex;
+      justify-content: center;
+      gap: 22px;
+      margin-bottom: 14px;
+    }
+
+    .round-action {
+      display: inline-grid;
+      place-items: center;
+      width: 64px;
+      height: 64px;
+      border: 0;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .round-action.minus {
+      background: var(--red);
+    }
+
+    .round-action.plus {
+      background: var(--green);
+    }
+
+    .updated {
+      font-size: 0.82rem;
+    }
+
+    .primary,
+    .secondary {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      min-height: 46px;
+      border-radius: 8px;
+      padding: 0 16px;
+      font-weight: 750;
+    }
+
+    .primary {
+      border: 0;
+      color: #fff;
+      background: var(--green);
+    }
+
+    .primary:hover,
+    .round-action.plus:hover {
+      background: var(--green-dark);
+    }
+
+    .secondary {
+      border: 1px solid var(--line);
+      color: var(--green);
+      background: var(--surface);
+    }
+
+    .primary:disabled,
+    .secondary:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    dialog {
+      width: min(calc(100% - 32px), 480px);
+      border: 0;
+      border-radius: 12px;
+      padding: 0;
+      color: var(--ink);
+      background: var(--surface);
+      box-shadow: 0 24px 80px rgba(19, 23, 27, 0.28);
+    }
+
+    dialog::backdrop {
+      background: rgba(19, 23, 27, 0.42);
+    }
+
+    .dialog-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .dialog-header h2 {
+      margin: 0;
+      font-size: 1.08rem;
+    }
+
+    .close-button {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      color: var(--ink);
+      background: #f8faf9;
+      font-weight: 800;
+    }
+
+    .form-body {
+      display: grid;
+      gap: 16px;
+      padding: 18px;
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      font-weight: 750;
+    }
+
+    .field-note {
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 500;
+    }
+
+    input {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 11px;
+      color: var(--ink);
+      background: #fbfcfb;
+    }
+
+    input:focus {
+      outline: 3px solid rgba(26, 110, 73, 0.18);
+      border-color: var(--green);
+    }
+
+    .dialog-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      padding: 0 18px 18px;
+    }
+
+    .dialog-actions .secondary,
+    .dialog-actions .primary {
+      width: auto;
+      min-width: 112px;
+    }
+
+    @media (max-width: 480px) {
+      .menu-row {
+        width: min-content;
+      }
+
+      .small-action {
+        width: 100%;
+      }
+
+      .dialog-actions {
+        flex-direction: column-reverse;
+      }
+
+      .dialog-actions .secondary,
+      .dialog-actions .primary {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <span aria-hidden="true"></span>
+      <h1 class="title">Counter</h1>
+      <button class="icon-button" id="topAddButton" type="button" aria-label="Add counter">+</button>
+    </header>
+
+    <section class="summary" aria-label="Counter summary">
+      <div>
+        <h2>Your Counters</h2>
+        <p id="savedCount">0 of 12 saved</p>
+      </div>
+      <div class="total" aria-live="polite">
+        <span class="total-value" id="totalValue">0</span>
+        <span class="total-label">Total</span>
+      </div>
+    </section>
+
+    <section class="stack" id="counterStack" aria-live="polite"></section>
+  </main>
+
+  <dialog id="counterDialog">
+    <form method="dialog" id="counterForm">
+      <div class="dialog-header">
+        <h2 id="dialogTitle">Add Counter</h2>
+        <button class="close-button" value="cancel" type="button" id="closeDialog" aria-label="Close">x</button>
+      </div>
+      <div class="form-body">
+        <label>
+          Name
+          <input id="counterName" name="counterName" maxlength="80" autocomplete="off" required>
+        </label>
+        <label>
+          Starting Count
+          <input id="counterValue" name="counterValue" type="number" min="-999999" max="999999" step="1" inputmode="numeric" required>
+          <span class="field-note">Use this to correct a count or start from a number other than 0.</span>
+        </label>
+        <label>
+          Add/Subtract By
+          <input id="counterStep" name="counterStep" type="number" min="1" max="1000" step="1" inputmode="numeric" required>
+        </label>
+      </div>
+      <div class="dialog-actions">
+        <button class="secondary" value="cancel" type="button" id="cancelDialog">Cancel</button>
+        <button class="primary" value="default" type="submit">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <template id="emptyTemplate">
+    <article class="panel">
+      <p class="empty-title"><span aria-hidden="true">#</span> No counters yet</p>
+      <p class="empty-copy">Create a counter, then use the plus and minus buttons to keep track without ads or sign-in.</p>
+      <button class="primary" type="button" data-action="add">+ Add Counter</button>
+    </article>
+  </template>
+
+  <template id="counterTemplate">
+    <article class="counter-card">
+      <div class="counter-head">
+        <div>
+          <h3 class="counter-name"></h3>
+          <p class="counter-meta"></p>
+        </div>
+        <div class="menu-row">
+          <button class="small-action" type="button" data-action="edit">Edit</button>
+          <button class="small-action" type="button" data-action="reset">Reset</button>
+          <button class="small-action danger" type="button" data-action="delete">Delete</button>
+        </div>
+      </div>
+      <span class="counter-value"></span>
+      <div class="counter-controls">
+        <button class="round-action minus" type="button" data-action="decrement">-</button>
+        <button class="round-action plus" type="button" data-action="increment">+</button>
+      </div>
+      <p class="updated"></p>
+    </article>
+  </template>
+
+  <script>
+    const STORAGE_KEY = "isaac-counter-items-v1";
+    const MAX_COUNTERS = 12;
+    const MAX_STEP = 1000;
+    const MIN_VALUE = -999999;
+    const MAX_VALUE = 999999;
+
+    const stack = document.querySelector("#counterStack");
+    const savedCount = document.querySelector("#savedCount");
+    const totalValue = document.querySelector("#totalValue");
+    const topAddButton = document.querySelector("#topAddButton");
+    const dialog = document.querySelector("#counterDialog");
+    const form = document.querySelector("#counterForm");
+    const dialogTitle = document.querySelector("#dialogTitle");
+    const nameInput = document.querySelector("#counterName");
+    const valueInput = document.querySelector("#counterValue");
+    const stepInput = document.querySelector("#counterStep");
+    const closeDialog = document.querySelector("#closeDialog");
+    const cancelDialog = document.querySelector("#cancelDialog");
+    const emptyTemplate = document.querySelector("#emptyTemplate");
+    const counterTemplate = document.querySelector("#counterTemplate");
+
+    let counters = loadCounters();
+    let editingId = null;
+
+    function makeId() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return window.crypto.randomUUID();
+      }
+      return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max);
+    }
+
+    function cleanNumber(value, fallback) {
+      const parsed = Number.parseInt(value, 10);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    function displayTitle(counter) {
+      const trimmed = String(counter.title || "").trim();
+      return trimmed.length > 0 ? trimmed : "Counter";
+    }
+
+    function loadCounters() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          return [];
+        }
+        const decoded = JSON.parse(raw);
+        if (!Array.isArray(decoded)) {
+          return [];
+        }
+        return decoded
+          .slice(0, MAX_COUNTERS)
+          .map((counter) => ({
+            id: String(counter.id || makeId()),
+            title: String(counter.title || "Counter"),
+            value: clamp(cleanNumber(counter.value, 0), MIN_VALUE, MAX_VALUE),
+            step: clamp(cleanNumber(counter.step, 1), 1, MAX_STEP),
+            updatedAt: Number.isFinite(Date.parse(counter.updatedAt)) ? counter.updatedAt : new Date().toISOString()
+          }))
+          .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+      } catch {
+        return [];
+      }
+    }
+
+    function persist() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(counters));
+    }
+
+    function formatNumber(value) {
+      return new Intl.NumberFormat().format(value);
+    }
+
+    function relativeTime(isoDate) {
+      const seconds = Math.round((Date.parse(isoDate) - Date.now()) / 1000);
+      const absoluteSeconds = Math.abs(seconds);
+      const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto", style: "short" });
+      if (absoluteSeconds < 60) {
+        return formatter.format(seconds, "second");
+      }
+      const minutes = Math.round(seconds / 60);
+      if (Math.abs(minutes) < 60) {
+        return formatter.format(minutes, "minute");
+      }
+      const hours = Math.round(minutes / 60);
+      if (Math.abs(hours) < 24) {
+        return formatter.format(hours, "hour");
+      }
+      const days = Math.round(hours / 24);
+      return formatter.format(days, "day");
+    }
+
+    function sortAndPersist() {
+      counters.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+      persist();
+      render();
+    }
+
+    function addCounter(data) {
+      if (counters.length >= MAX_COUNTERS) {
+        return;
+      }
+      counters.unshift({
+        id: makeId(),
+        title: data.title,
+        value: data.value,
+        step: data.step,
+        updatedAt: new Date().toISOString()
+      });
+      sortAndPersist();
+    }
+
+    function updateCounter(id, changes) {
+      const index = counters.findIndex((counter) => counter.id === id);
+      if (index === -1) {
+        return;
+      }
+      counters[index] = {
+        ...counters[index],
+        ...changes,
+        updatedAt: new Date().toISOString()
+      };
+      sortAndPersist();
+    }
+
+    function deleteCounter(id) {
+      const counter = counters.find((item) => item.id === id);
+      if (!counter) {
+        return;
+      }
+      if (!window.confirm(`Delete ${displayTitle(counter)}?`)) {
+        return;
+      }
+      counters = counters.filter((item) => item.id !== id);
+      persist();
+      render();
+    }
+
+    function resetCounter(id) {
+      const counter = counters.find((item) => item.id === id);
+      if (!counter) {
+        return;
+      }
+      if (!window.confirm(`${displayTitle(counter)} will go back to 0.`)) {
+        return;
+      }
+      updateCounter(id, { value: 0 });
+    }
+
+    function adjustCounter(id, amount) {
+      const counter = counters.find((item) => item.id === id);
+      if (!counter) {
+        return;
+      }
+      updateCounter(id, {
+        value: clamp(counter.value + amount, MIN_VALUE, MAX_VALUE)
+      });
+    }
+
+    function nextDefaultTitle() {
+      return `Counter ${Math.min(counters.length + 1, MAX_COUNTERS)}`;
+    }
+
+    function openEditor(counter = null) {
+      editingId = counter ? counter.id : null;
+      dialogTitle.textContent = counter ? "Edit Counter" : "Add Counter";
+      nameInput.value = counter ? displayTitle(counter) : nextDefaultTitle();
+      valueInput.value = counter ? counter.value : 0;
+      stepInput.value = counter ? counter.step : 1;
+      dialog.showModal();
+      nameInput.focus();
+      nameInput.select();
+    }
+
+    function closeEditor() {
+      dialog.close();
+      editingId = null;
+      form.reset();
+    }
+
+    function readForm() {
+      return {
+        title: nameInput.value.trim() || "Counter",
+        value: clamp(cleanNumber(valueInput.value, 0), MIN_VALUE, MAX_VALUE),
+        step: clamp(cleanNumber(stepInput.value, 1), 1, MAX_STEP)
+      };
+    }
+
+    function render() {
+      stack.replaceChildren();
+      const total = counters.reduce((sum, counter) => sum + counter.value, 0);
+      savedCount.textContent = `${counters.length} of ${MAX_COUNTERS} saved`;
+      totalValue.textContent = formatNumber(total);
+      topAddButton.disabled = counters.length >= MAX_COUNTERS;
+
+      if (counters.length === 0) {
+        stack.append(emptyTemplate.content.cloneNode(true));
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      counters.forEach((counter) => {
+        const node = counterTemplate.content.cloneNode(true);
+        const card = node.querySelector(".counter-card");
+        const name = node.querySelector(".counter-name");
+        const meta = node.querySelector(".counter-meta");
+        const value = node.querySelector(".counter-value");
+        const updated = node.querySelector(".updated");
+        const minus = node.querySelector(".minus");
+        const plus = node.querySelector(".plus");
+
+        card.dataset.id = counter.id;
+        name.textContent = displayTitle(counter);
+        meta.textContent = `Step ${formatNumber(counter.step)}`;
+        value.textContent = formatNumber(counter.value);
+        value.setAttribute("aria-label", `Current count ${counter.value}`);
+        updated.textContent = `Updated ${relativeTime(counter.updatedAt)}`;
+        minus.setAttribute("aria-label", `Subtract ${counter.step}`);
+        plus.setAttribute("aria-label", `Add ${counter.step}`);
+        fragment.append(node);
+      });
+
+      if (counters.length < MAX_COUNTERS) {
+        const addButton = document.createElement("button");
+        addButton.className = "secondary";
+        addButton.type = "button";
+        addButton.dataset.action = "add";
+        addButton.textContent = "+ Add Counter";
+        fragment.append(addButton);
+      }
+
+      stack.append(fragment);
+    }
+
+    stack.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) {
+        return;
+      }
+
+      const action = button.dataset.action;
+      const card = button.closest(".counter-card");
+      const id = card ? card.dataset.id : null;
+      const counter = id ? counters.find((item) => item.id === id) : null;
+
+      if (action === "add") {
+        openEditor();
+      } else if (action === "edit" && counter) {
+        openEditor(counter);
+      } else if (action === "reset" && id) {
+        resetCounter(id);
+      } else if (action === "delete" && id) {
+        deleteCounter(id);
+      } else if (action === "increment" && counter) {
+        adjustCounter(id, counter.step);
+      } else if (action === "decrement" && counter) {
+        adjustCounter(id, -counter.step);
+      }
+    });
+
+    topAddButton.addEventListener("click", () => openEditor());
+    closeDialog.addEventListener("click", closeEditor);
+    cancelDialog.addEventListener("click", closeEditor);
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const data = readForm();
+      if (editingId) {
+        updateCounter(editingId, data);
+      } else {
+        addCounter(data);
+      }
+      closeEditor();
+    });
+
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) {
+        closeEditor();
+      }
+    });
+
+    render();
+    window.setInterval(render, 30000);
+  </script>
+</body>
+</html>
