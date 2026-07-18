@@ -525,8 +525,7 @@
             value: clamp(cleanNumber(counter.value, 0), MIN_VALUE, MAX_VALUE),
             step: clamp(cleanNumber(counter.step, 1), 1, MAX_STEP),
             updatedAt: Number.isFinite(Date.parse(counter.updatedAt)) ? counter.updatedAt : new Date().toISOString()
-          }))
-          .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+          }));
       } catch {
         return [];
       }
@@ -559,8 +558,7 @@
       return formatter.format(days, "day");
     }
 
-    function sortAndPersist() {
-      counters.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+    function persistAndRender() {
       persist();
       render();
     }
@@ -576,7 +574,7 @@
         step: data.step,
         updatedAt: new Date().toISOString()
       });
-      sortAndPersist();
+      persistAndRender();
     }
 
     function updateCounter(id, changes) {
@@ -589,7 +587,7 @@
         ...changes,
         updatedAt: new Date().toISOString()
       };
-      sortAndPersist();
+      persistAndRender();
     }
 
     function deleteCounter(id) {
