@@ -1,0 +1,10 @@
+{
+  "name": "Isaac's Time Garden",
+  "short_name": "Time Garden",
+  "start_url": "./time-budget-tracker.html",
+  "display": "standalone",
+  "background_color": "#fbfaf7",
+  "theme_color": "#7c3aed",
+  "description": "A gentle weekly time-learning tracker for Isaac.",
+  "icons": []
+}
