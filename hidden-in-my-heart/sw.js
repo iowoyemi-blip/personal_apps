@@ -1,4 +1,4 @@
-const CACHE_NAME = "hidden-in-my-heart-v1";
+const CACHE_NAME = "hidden-in-my-heart-v2";
 const FILES = [
   "./",
   "./index.html",

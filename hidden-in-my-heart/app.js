@@ -273,6 +273,7 @@ function renderLibrary() {
 
 function verseCard(verse) {
   const entries = [...verse.journalEntries].sort((a, b) => b.createdAt - a.createdAt);
+  const heading = verse.translation ? `${verse.reference} ${verse.translation}` : verse.reference;
   const body = libraryMode === "journal"
     ? `
       ${entries.slice(0, 3).map(entry => `<div class="journal-card"><p class="journal-date">${escapeHtml(dateLabel(entry.createdAt))}</p><p>${escapeHtml(entry.text)}</p></div>`).join("")}
@@ -284,13 +285,10 @@ function verseCard(verse) {
   return `
     <article class="verse-card" data-verse-card="${verse.id}">
       <div class="card-head">
-        <h3 class="reference">${escapeHtml(verse.reference)}</h3>
+        <h3 class="reference">${escapeHtml(heading)}</h3>
         <div class="button-row">
           <button class="small-button" type="button" data-edit-verse="${verse.id}" aria-label="Edit ${escapeHtml(verse.reference)}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
-          </button>
-          <button class="small-button" type="button" data-journal-verse="${verse.id}" aria-label="Journal for ${escapeHtml(verse.reference)}">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path></svg>
           </button>
           <button class="small-button" type="button" data-delete-verse="${verse.id}" aria-label="Delete ${escapeHtml(verse.reference)}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path></svg>
@@ -298,8 +296,8 @@ function verseCard(verse) {
         </div>
       </div>
       ${body}
-      ${verse.translation ? `<p class="translation">${escapeHtml(verse.translation)}</p>` : ""}
       <div class="category-tags">
+        ${entries.length ? `<button class="journal-pill" type="button" data-journal-verse="${verse.id}" aria-label="Journal for ${escapeHtml(verse.reference)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path><path d="M8 9h8"></path><path d="M8 13h5"></path></svg>Journal</button>` : ""}
         ${verse.cats.map(id => categoryById(id)).filter(Boolean).map(category => `<span class="tag" style="background:${categoryColor(category.id)}">${escapeHtml(category.name)}</span>`).join("")}
       </div>
     </article>

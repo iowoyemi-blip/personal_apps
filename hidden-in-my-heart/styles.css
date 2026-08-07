@@ -1,16 +1,16 @@
 :root {
   color-scheme: light;
-  --paper: #f6f4ed;
-  --paper-2: #ecefe4;
-  --card: #ffffff;
+  --paper: #f5eedf;
+  --paper-2: #eee3ce;
+  --card: #fffaf0;
   --ink: #241f1c;
   --muted: #625d54;
-  --line: #d7d4c9;
-  --accent: #7a2e2e;
+  --line: #dfcfaa;
+  --accent: #8b3032;
   --accent-dark: #5f2224;
-  --gold: #a78533;
-  --olive: #5a6b48;
-  --slate: #405767;
+  --gold: #b08b38;
+  --olive: #4d755d;
+  --slate: #3c5f70;
   --plum: #654869;
   --coral: #a84c3e;
   --shadow: 0 16px 42px rgba(36, 31, 28, 0.1);
@@ -24,13 +24,11 @@
 
 html,
 body {
-  min-height: 100%;
+  height: 100%;
   margin: 0;
   color: var(--ink);
-  background:
-    linear-gradient(135deg, rgba(122, 46, 46, 0.08), transparent 36%),
-    linear-gradient(225deg, rgba(90, 107, 72, 0.12), transparent 40%),
-    var(--paper);
+  overflow: hidden;
+  background: var(--paper);
 }
 
 body {
@@ -64,27 +62,32 @@ svg {
 }
 
 .app-shell {
-  width: min(100%, 1040px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(100%, 760px);
+  height: 100dvh;
   margin: 0 auto;
-  padding: max(18px, env(safe-area-inset-top)) 18px calc(92px + var(--safe-bottom));
+  overflow: hidden;
+  background: var(--paper);
 }
 
 .topbar {
-  display: flex;
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 64px;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  min-height: 66px;
-  margin-bottom: 14px;
+  gap: 8px;
+  min-height: 86px;
+  padding: max(10px, env(safe-area-inset-top)) 18px 12px;
+  border-bottom: 1px solid rgba(223, 207, 170, 0.85);
+  background: rgba(245, 238, 223, 0.96);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(12px);
 }
 
 .eyebrow {
-  margin: 0 0 4px;
-  color: var(--accent);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  display: none;
 }
 
 h1,
@@ -96,39 +99,36 @@ p {
 
 h1 {
   margin-bottom: 0;
-  font-size: clamp(1.45rem, 7vw, 2rem);
-  line-height: 1.05;
+  text-align: center;
+  font-size: clamp(1.42rem, 6vw, 2rem);
+  font-weight: 850;
+  line-height: 1.1;
   letter-spacing: 0;
 }
 
 .top-actions {
-  display: flex;
-  gap: 10px;
+  display: grid;
+  justify-content: end;
 }
 
 .icon-button {
   display: inline-grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--line);
+  width: 56px;
+  height: 56px;
+  border: 1px solid rgba(158, 145, 119, 0.48);
   border-radius: 50%;
-  color: var(--ink);
-  background: var(--card);
-  box-shadow: var(--shadow);
+  color: var(--accent);
+  background: rgba(255, 250, 240, 0.78);
+  box-shadow: 0 7px 18px rgba(36, 31, 28, 0.08);
 }
 
 .primary-icon {
-  border-color: var(--accent);
-  color: #ffffff;
-  background: var(--accent);
+  display: none;
 }
 
 .stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 16px;
+  display: none;
 }
 
 .stats div {
@@ -159,6 +159,11 @@ h1 {
 .view {
   display: grid;
   gap: 16px;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 18px 18px 20px;
+  background: linear-gradient(180deg, var(--paper), var(--paper-2));
 }
 
 .toolbar-panel,
@@ -169,8 +174,8 @@ h1 {
 .backup-card,
 .journal-card {
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.88);
+  border-radius: 16px;
+  background: var(--card);
 }
 
 .toolbar-panel,
@@ -178,6 +183,14 @@ h1 {
 .backup-card,
 .practice-card {
   padding: 16px;
+}
+
+.toolbar-panel {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(255, 250, 240, 0.94);
+  backdrop-filter: blur(10px);
 }
 
 .quote {
@@ -265,14 +278,18 @@ textarea.field {
 
 .verse-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
-  gap: 14px;
+  grid-template-columns: 1fr;
+  gap: 16px;
 }
 
 .verse-card {
   position: relative;
   overflow: hidden;
-  padding: 16px;
+  padding: 22px 20px 20px;
+  border-width: 1.5px;
+  border-color: rgba(223, 207, 170, 0.96);
+  border-radius: 18px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .verse-card::before,
@@ -280,7 +297,7 @@ textarea.field {
   content: "";
   position: absolute;
   inset: 0 0 auto;
-  height: 4px;
+  height: 5px;
   background: var(--gold);
 }
 
@@ -295,14 +312,17 @@ textarea.field {
 .reference {
   margin: 0;
   color: var(--accent);
-  font-size: 1.15rem;
-  line-height: 1.25;
+  font-size: clamp(1.72rem, 6vw, 2.15rem);
+  font-weight: 850;
+  line-height: 1.18;
   overflow-wrap: anywhere;
 }
 
 .verse-text {
-  margin-bottom: 12px;
-  line-height: 1.48;
+  margin-bottom: 18px;
+  font-size: clamp(1.42rem, 5.4vw, 1.9rem);
+  font-weight: 700;
+  line-height: 1.34;
   white-space: pre-wrap;
 }
 
@@ -320,7 +340,7 @@ textarea.field {
 
 .button-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -335,15 +355,23 @@ textarea.field {
   justify-content: center;
   gap: 8px;
   min-height: 40px;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 0 12px;
   font-weight: 760;
 }
 
 .small-button {
-  border: 1px solid var(--line);
+  min-width: 40px;
+  border: 0;
   color: var(--ink);
-  background: #fbfcf8;
+  background: transparent;
+  padding: 0 4px;
+}
+
+.small-button svg {
+  width: 28px;
+  height: 28px;
+  stroke-width: 2.35;
 }
 
 .primary,
@@ -384,16 +412,38 @@ textarea.field {
 .category-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 12px;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
 }
 
 .tag {
   border-radius: 999px;
-  padding: 4px 8px;
+  padding: 6px 14px;
   color: #ffffff;
-  font-size: 0.72rem;
-  font-weight: 760;
+  font-size: clamp(1rem, 4vw, 1.18rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.journal-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  border: 2px solid #d4bd83;
+  border-radius: 999px;
+  padding: 0 14px;
+  color: var(--accent);
+  background: rgba(255, 250, 240, 0.7);
+  font-size: clamp(1rem, 4vw, 1.14rem);
+  font-weight: 850;
+}
+
+.journal-pill svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2.4;
 }
 
 .empty-state {
@@ -492,38 +542,43 @@ textarea.field {
 }
 
 .tabbar {
-  position: fixed;
-  left: 50%;
-  bottom: var(--safe-bottom);
+  position: relative;
   z-index: 3;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  width: min(calc(100% - 24px), 700px);
-  transform: translateX(-50%);
-  border: 1px solid rgba(215, 212, 201, 0.94);
-  border-radius: 14px;
-  padding: 6px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(12px);
+  width: min(calc(100% - 32px), 620px);
+  margin: 0 auto var(--safe-bottom);
+  border: 1px solid rgba(180, 165, 137, 0.55);
+  border-radius: 999px;
+  padding: 8px;
+  background: rgba(255, 252, 246, 0.9);
+  box-shadow: 0 12px 36px rgba(36, 31, 28, 0.18);
+  backdrop-filter: blur(18px);
 }
 
 .tab {
   display: grid;
   place-items: center;
-  gap: 3px;
-  min-height: 56px;
+  gap: 4px;
+  min-height: 58px;
   border: 0;
-  border-radius: 10px;
-  color: var(--muted);
+  border-radius: 999px;
+  color: #070707;
   background: transparent;
-  font-size: 0.74rem;
-  font-weight: 800;
+  font-size: clamp(0.68rem, 2.8vw, 0.9rem);
+  font-weight: 850;
 }
 
 .tab.active {
-  color: #ffffff;
-  background: var(--accent);
+  color: var(--accent);
+  background: rgba(122, 46, 46, 0.11);
+  box-shadow: inset 0 0 22px rgba(122, 46, 46, 0.12);
+}
+
+.tab svg {
+  width: 26px;
+  height: 26px;
+  stroke-width: 2.45;
 }
 
 dialog {
@@ -666,12 +721,13 @@ legend {
 
 @media (max-width: 620px) {
   .app-shell {
-    padding-right: 14px;
-    padding-left: 14px;
+    width: 100%;
   }
 
   .topbar {
-    align-items: flex-start;
+    min-height: 84px;
+    padding-right: 14px;
+    padding-left: 14px;
   }
 
   .stats {
@@ -680,6 +736,20 @@ legend {
 
   .stats div {
     padding: 12px 10px;
+  }
+
+  .view {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .top-actions {
+    justify-content: end;
+  }
+
+  .icon-button {
+    width: 54px;
+    height: 54px;
   }
 
   .control-row {
