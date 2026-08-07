@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0e5f63">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Countdown">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Countdown</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <style>
+    :root {
+      color-scheme: light;
+      --background: #f4f3ee;
+      --surface: #ffffff;
+      --ink: #12171a;
+      --muted: #5d676b;
+      --line: #d8ddd9;
+      --teal: #0e5f63;
+      --teal-dark: #08474a;
+      --gold: #c78916;
+      --coral: #b54133;
+      --focus: #2f7fd4;
+      --shadow: 0 14px 34px rgba(18, 23, 26, 0.08);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+      color: var(--ink);
+      background: var(--background);
+    }
+
+    body {
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:focus-visible,
+    input:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--focus) 72%, transparent);
+      outline-offset: 2px;
+    }
+
+    .app {
+      width: min(100%, 760px);
+      margin: 0 auto;
+      padding: max(18px, env(safe-area-inset-top)) 18px max(28px, env(safe-area-inset-bottom));
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 44px 1fr 44px;
+      align-items: center;
+      min-height: 56px;
+      margin-bottom: 18px;
+    }
+
+    .title {
+      margin: 0;
+      text-align: center;
+      font-size: 1.06rem;
+      font-weight: 760;
+      letter-spacing: 0;
+    }
+
+    .icon-button {
+      display: inline-grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border: 0;
+      border-radius: 50%;
+      color: var(--ink);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .icon-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.42;
+    }
+
+    .icon {
+      width: 21px;
+      height: 21px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      margin-bottom: 18px;
+      padding-top: 8px;
+    }
+
+    .summary h2 {
+      margin: 0 0 5px;
+      font-size: clamp(1.38rem, 7vw, 1.85rem);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .summary p,
+    .count-label,
+    .target-date,
+    .backup-note {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .count {
+      min-width: 94px;
+      text-align: right;
+    }
+
+    .count-value {
+      display: block;
+      font-size: clamp(1.5rem, 8vw, 2.05rem);
+      font-weight: 830;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .count-label {
+      display: block;
+      margin-top: 5px;
+      font-size: 0.72rem;
+      font-weight: 760;
+      text-transform: uppercase;
+    }
+
+    .stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .panel,
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .panel,
+    .card {
+      padding: 16px;
+    }
+
+    .empty-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 10px;
+      color: var(--teal);
+      font-weight: 760;
+    }
+
+    .empty-copy {
+      margin: 0 0 16px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .countdown-name {
+      margin: 0 0 6px;
+      font-size: 1.06rem;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .target-date {
+      font-size: 0.94rem;
+      line-height: 1.35;
+    }
+
+    .menu-row {
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .small-action {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0 11px;
+      color: var(--ink);
+      background: #fbfcfb;
+      font-size: 0.86rem;
+      font-weight: 720;
+    }
+
+    .small-action.danger {
+      color: var(--coral);
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 13px;
+      color: var(--teal);
+      font-size: 0.93rem;
+      font-weight: 760;
+    }
+
+    .status.complete {
+      color: var(--coral);
+    }
+
+    .time-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .time-tile {
+      position: relative;
+      display: grid;
+      align-content: center;
+      min-height: 78px;
+      padding: 10px 6px 8px;
+      overflow: hidden;
+      text-align: center;
+      border-radius: 8px;
+      background: var(--background);
+    }
+
+    .time-tile::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 3px;
+      background: var(--teal);
+    }
+
+    .time-tile:nth-child(4)::before {
+      background: var(--gold);
+    }
+
+    .time-value {
+      display: block;
+      min-width: 0;
+      font-size: clamp(1.12rem, 7vw, 1.55rem);
+      font-weight: 850;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+
+    .time-label {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.68rem;
+      font-weight: 760;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .primary,
+    .secondary {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      min-height: 46px;
+      border-radius: 8px;
+      padding: 0 16px;
+      font-weight: 760;
+    }
+
+    .primary {
+      border: 0;
+      color: #ffffff;
+      background: var(--teal);
+    }
+
+    .primary:hover {
+      background: var(--teal-dark);
+    }
+
+    .secondary {
+      border: 1px solid var(--line);
+      color: var(--teal);
+      background: var(--surface);
+    }
+
+    .secondary-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .backup-note {
+      margin-top: 10px;
+      font-size: 0.84rem;
+      line-height: 1.4;
+    }
+
+    .toast {
+      position: fixed;
+      left: 18px;
+      right: 18px;
+      bottom: max(18px, env(safe-area-inset-bottom));
+      z-index: 4;
+      width: min(calc(100% - 36px), 560px);
+      margin: 0 auto;
+      padding: 12px 14px;
+      border-radius: 8px;
+      color: #ffffff;
+      background: rgba(18, 23, 26, 0.92);
+      box-shadow: var(--shadow);
+      transform: translateY(14px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    dialog {
+      width: min(calc(100% - 28px), 520px);
+      max-height: calc(100% - 28px);
+      margin: auto;
+      padding: 0;
+      border: 0;
+      border-radius: 10px;
+      color: var(--ink);
+      background: var(--surface);
+      box-shadow: 0 24px 70px rgba(18, 23, 26, 0.24);
+    }
+
+    dialog::backdrop {
+      background: rgba(18, 23, 26, 0.34);
+    }
+
+    .dialog-shell {
+      display: grid;
+      max-height: calc(100dvh - 28px);
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .dialog-head,
+    .dialog-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .dialog-actions {
+      border-top: 1px solid var(--line);
+      border-bottom: 0;
+    }
+
+    .dialog-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 780;
+    }
+
+    .form {
+      display: grid;
+      gap: 16px;
+      padding: 18px 16px;
+      overflow: auto;
+    }
+
+    label {
+      display: grid;
+      gap: 8px;
+      font-weight: 760;
+    }
+
+    .field {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--ink);
+      background: #fbfcfb;
+    }
+
+    .error {
+      display: none;
+      margin: 0;
+      color: var(--coral);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .error.show {
+      display: block;
+    }
+
+    .plain-button {
+      min-height: 40px;
+      border: 0;
+      padding: 0 4px;
+      color: var(--teal);
+      background: transparent;
+      font-weight: 760;
+    }
+
+    .save-button {
+      min-height: 40px;
+      border: 0;
+      border-radius: 8px;
+      padding: 0 16px;
+      color: #ffffff;
+      background: var(--teal);
+      font-weight: 760;
+    }
+
+    .save-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+
+    .file-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @media (max-width: 430px) {
+      .app {
+        padding-right: 14px;
+        padding-left: 14px;
+      }
+
+      .summary {
+        gap: 12px;
+      }
+
+      .time-grid {
+        gap: 6px;
+      }
+
+      .time-tile {
+        min-height: 74px;
+        padding-right: 4px;
+        padding-left: 4px;
+      }
+
+      .small-action {
+        padding: 0 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar" aria-label="Countdown app header">
+      <span aria-hidden="true"></span>
+      <h1 class="title">Countdown</h1>
+      <button class="icon-button" id="topAddButton" type="button" aria-label="Add countdown">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5v14M5 12h14"></path>
+        </svg>
+      </button>
+    </header>
+
+    <section class="summary" aria-label="Countdown summary">
+      <div>
+        <h2>Your Countdowns</h2>
+        <p id="summaryText">0 of 4 active</p>
+      </div>
+      <div class="count" aria-live="polite">
+        <span class="count-value" id="activeCount">0</span>
+        <span class="count-label">Active</span>
+      </div>
+    </section>
+
+    <section class="stack" id="countdownList" aria-live="polite"></section>
+
+    <section class="panel" id="backupPanel" aria-label="Countdown backup">
+      <div class="secondary-row">
+        <button class="secondary" id="exportButton" type="button">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v12"></path>
+            <path d="m7 10 5 5 5-5"></path>
+            <path d="M5 21h14"></path>
+          </svg>
+          Export
+        </button>
+        <button class="secondary" id="importButton" type="button">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 21V9"></path>
+            <path d="m7 14 5-5 5 5"></path>
+            <path d="M5 3h14"></path>
+          </svg>
+          Import
+        </button>
+      </div>
+      <p class="backup-note">Countdowns are saved only on this device. Export creates a backup file.</p>
+      <input class="file-input" id="importFile" type="file" accept="application/json,.json">
+    </section>
+  </main>
+
+  <dialog id="editorDialog" aria-labelledby="dialogTitle">
+    <form class="dialog-shell" id="editorForm" method="dialog">
+      <div class="dialog-head">
+        <button class="plain-button" id="cancelButton" value="cancel" type="button">Cancel</button>
+        <h2 class="dialog-title" id="dialogTitle">Add Countdown</h2>
+        <button class="save-button" id="saveButton" value="save" type="submit">Save</button>
+      </div>
+      <div class="form">
+        <label>
+          Name
+          <input class="field" id="titleInput" type="text" autocomplete="off" maxlength="80" placeholder="Countdown name">
+        </label>
+        <label>
+          Target Date
+          <input class="field" id="dateInput" type="datetime-local" required>
+        </label>
+        <p class="error" id="dateError">Choose a date and time in the future.</p>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const MAX_COUNTDOWNS = 4;
+    const STORAGE_KEY = "isaac.countdown.items.v1";
+    const EXPORT_VERSION = 1;
+
+    const list = document.getElementById("countdownList");
+    const summaryText = document.getElementById("summaryText");
+    const activeCount = document.getElementById("activeCount");
+    const topAddButton = document.getElementById("topAddButton");
+    const editorDialog = document.getElementById("editorDialog");
+    const editorForm = document.getElementById("editorForm");
+    const dialogTitle = document.getElementById("dialogTitle");
+    const titleInput = document.getElementById("titleInput");
+    const dateInput = document.getElementById("dateInput");
+    const dateError = document.getElementById("dateError");
+    const saveButton = document.getElementById("saveButton");
+    const cancelButton = document.getElementById("cancelButton");
+    const exportButton = document.getElementById("exportButton");
+    const importButton = document.getElementById("importButton");
+    const importFile = document.getElementById("importFile");
+    const toast = document.getElementById("toast");
+
+    let countdowns = loadCountdowns();
+    let editingId = null;
+    let toastTimer = null;
+
+    const targetFormatter = new Intl.DateTimeFormat(undefined, {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+
+    function createId() {
+      if (crypto && typeof crypto.randomUUID === "function") {
+        return crypto.randomUUID();
+      }
+      return `countdown-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function displayTitle(item) {
+      const title = (item.title || "").trim();
+      return title || "Countdown";
+    }
+
+    function nextDefaultTitle() {
+      return `Countdown ${Math.min(countdowns.length + 1, MAX_COUNTDOWNS)}`;
+    }
+
+    function normalizeItem(item) {
+      const targetDate = new Date(item.targetDate);
+      if (Number.isNaN(targetDate.getTime())) {
+        return null;
+      }
+      return {
+        id: String(item.id || createId()),
+        title: String(item.title || "").trim(),
+        targetDate: targetDate.toISOString()
+      };
+    }
+
+    function sortCountdowns(items) {
+      return [...items].sort((a, b) => new Date(a.targetDate) - new Date(b.targetDate));
+    }
+
+    function loadCountdowns() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        if (!Array.isArray(parsed)) {
+          return [];
+        }
+        return sortCountdowns(parsed.map(normalizeItem).filter(Boolean)).slice(0, MAX_COUNTDOWNS);
+      } catch {
+        return [];
+      }
+    }
+
+    function persist() {
+      countdowns = sortCountdowns(countdowns).slice(0, MAX_COUNTDOWNS);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(countdowns));
+      render();
+    }
+
+    function remainingParts(targetDate) {
+      const totalSeconds = Math.max(0, Math.ceil((targetDate.getTime() - Date.now()) / 1000));
+      return {
+        days: Math.floor(totalSeconds / 86400),
+        hours: Math.floor((totalSeconds % 86400) / 3600),
+        minutes: Math.floor((totalSeconds % 3600) / 60),
+        seconds: totalSeconds % 60,
+        isComplete: totalSeconds === 0
+      };
+    }
+
+    function formatDateForInput(date) {
+      const pad = value => String(value).padStart(2, "0");
+      return [
+        date.getFullYear(),
+        pad(date.getMonth() + 1),
+        pad(date.getDate())
+      ].join("-") + `T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    function parseDateInput(value) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function render() {
+      const count = countdowns.length;
+      summaryText.textContent = `${count} of ${MAX_COUNTDOWNS} active`;
+      activeCount.textContent = count;
+      topAddButton.disabled = count >= MAX_COUNTDOWNS;
+
+      if (count === 0) {
+        list.innerHTML = `
+          <section class="panel">
+            <p class="empty-title">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="13" r="8"></circle>
+                <path d="M12 9v5l3 2"></path>
+                <path d="M9 2h6"></path>
+              </svg>
+              No countdowns yet
+            </p>
+            <p class="empty-copy">Add up to four future dates and keep them running side by side.</p>
+            <button class="primary" type="button" data-add-empty>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5v14M5 12h14"></path>
+              </svg>
+              Add Countdown
+            </button>
+          </section>
+        `;
+        list.querySelector("[data-add-empty]").addEventListener("click", () => openEditor());
+        return;
+      }
+
+      const cards = countdowns.map(item => {
+        const targetDate = new Date(item.targetDate);
+        const remaining = remainingParts(targetDate);
+        const statusClass = remaining.isComplete ? "status complete" : "status";
+        const statusText = remaining.isComplete ? "Date reached" : "Time remaining";
+        const statusIcon = remaining.isComplete
+          ? '<path d="m8 12 3 3 5-6"></path><circle cx="12" cy="12" r="9"></circle>'
+          : '<circle cx="12" cy="13" r="8"></circle><path d="M12 9v5l3 2"></path><path d="M9 2h6"></path>';
+
+        return `
+          <article class="card" data-id="${item.id}">
+            <div class="card-head">
+              <div>
+                <h3 class="countdown-name">${escapeHtml(displayTitle(item))}</h3>
+                <p class="target-date">${escapeHtml(targetFormatter.format(targetDate))}</p>
+              </div>
+              <div class="menu-row">
+                <button class="small-action" type="button" data-edit="${item.id}">Edit</button>
+                <button class="small-action danger" type="button" data-delete="${item.id}">Delete</button>
+              </div>
+            </div>
+            <div class="${statusClass}">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${statusIcon}</svg>
+              ${statusText}
+            </div>
+            <div class="time-grid" aria-label="Remaining time for ${escapeAttribute(displayTitle(item))}">
+              ${timeTile(remaining.days, "Days")}
+              ${timeTile(remaining.hours, "Hours")}
+              ${timeTile(remaining.minutes, "Min")}
+              ${timeTile(remaining.seconds, "Sec")}
+            </div>
+          </article>
+        `;
+      });
+
+      const addButton = count < MAX_COUNTDOWNS
+        ? `<button class="secondary" type="button" data-add-list>
+             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+               <path d="M12 5v14M5 12h14"></path>
+             </svg>
+             Add Countdown
+           </button>`
+        : "";
+
+      list.innerHTML = cards.join("") + addButton;
+      list.querySelectorAll("[data-edit]").forEach(button => {
+        button.addEventListener("click", () => openEditor(button.dataset.edit));
+      });
+      list.querySelectorAll("[data-delete]").forEach(button => {
+        button.addEventListener("click", () => deleteCountdown(button.dataset.delete));
+      });
+      const addListButton = list.querySelector("[data-add-list]");
+      if (addListButton) {
+        addListButton.addEventListener("click", () => openEditor());
+      }
+    }
+
+    function timeTile(value, label) {
+      return `
+        <div class="time-tile">
+          <span class="time-value">${Number(value).toLocaleString()}</span>
+          <span class="time-label">${label}</span>
+        </div>
+      `;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function escapeAttribute(value) {
+      return escapeHtml(value).replaceAll("`", "&#096;");
+    }
+
+    function openEditor(id = null) {
+      if (!id && countdowns.length >= MAX_COUNTDOWNS) {
+        showToast("You can keep up to four countdowns.");
+        return;
+      }
+
+      editingId = id;
+      const item = countdowns.find(countdown => countdown.id === id);
+      const defaultDate = new Date(Date.now() + 30 * 86400 * 1000);
+      const selectedDate = item ? new Date(item.targetDate) : defaultDate;
+      const minDate = new Date(Date.now() + 60 * 1000);
+
+      dialogTitle.textContent = item ? "Edit Countdown" : "Add Countdown";
+      titleInput.value = item ? displayTitle(item) : nextDefaultTitle();
+      dateInput.min = formatDateForInput(minDate);
+      dateInput.value = formatDateForInput(selectedDate > minDate ? selectedDate : minDate);
+      dateError.classList.remove("show");
+      saveButton.disabled = false;
+      editorDialog.showModal();
+      setTimeout(() => titleInput.focus(), 50);
+    }
+
+    function closeEditor() {
+      editorDialog.close();
+      editingId = null;
+      editorForm.reset();
+    }
+
+    function saveEditor(event) {
+      event.preventDefault();
+      const targetDate = parseDateInput(dateInput.value);
+      if (!targetDate || targetDate <= new Date()) {
+        dateError.classList.add("show");
+        saveButton.disabled = true;
+        return;
+      }
+
+      if (editingId) {
+        const index = countdowns.findIndex(item => item.id === editingId);
+        if (index !== -1) {
+          countdowns[index] = {
+            ...countdowns[index],
+            title: titleInput.value.trim(),
+            targetDate: targetDate.toISOString()
+          };
+        }
+      } else {
+        countdowns.push({
+          id: createId(),
+          title: titleInput.value.trim(),
+          targetDate: targetDate.toISOString()
+        });
+      }
+
+      closeEditor();
+      persist();
+    }
+
+    function validateEditor() {
+      const targetDate = parseDateInput(dateInput.value);
+      const valid = Boolean(targetDate && targetDate > new Date());
+      saveButton.disabled = !valid;
+      dateError.classList.toggle("show", !valid);
+    }
+
+    function deleteCountdown(id) {
+      const item = countdowns.find(countdown => countdown.id === id);
+      if (!item) {
+        return;
+      }
+      const confirmed = window.confirm(`Delete "${displayTitle(item)}"?`);
+      if (!confirmed) {
+        return;
+      }
+      countdowns = countdowns.filter(countdown => countdown.id !== id);
+      persist();
+      showToast("Countdown deleted.");
+    }
+
+    function exportCountdowns() {
+      const payload = {
+        app: "Countdown",
+        version: EXPORT_VERSION,
+        exportedAt: new Date().toISOString(),
+        countdowns
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `countdown-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      showToast("Backup file created.");
+    }
+
+    function importCountdowns(file) {
+      if (!file) {
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result || "{}"));
+          const incoming = Array.isArray(parsed) ? parsed : parsed.countdowns;
+          if (!Array.isArray(incoming)) {
+            throw new Error("Invalid backup");
+          }
+          const normalized = incoming.map(normalizeItem).filter(Boolean);
+          if (normalized.length === 0) {
+            throw new Error("No countdowns found");
+          }
+          countdowns = sortCountdowns(normalized).slice(0, MAX_COUNTDOWNS);
+          persist();
+          showToast(`Imported ${countdowns.length} countdown${countdowns.length === 1 ? "" : "s"}.`);
+        } catch {
+          showToast("That backup file could not be imported.");
+        } finally {
+          importFile.value = "";
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 2400);
+    }
+
+    topAddButton.addEventListener("click", () => openEditor());
+    cancelButton.addEventListener("click", closeEditor);
+    editorForm.addEventListener("submit", saveEditor);
+    dateInput.addEventListener("input", validateEditor);
+    exportButton.addEventListener("click", exportCountdowns);
+    importButton.addEventListener("click", () => importFile.click());
+    importFile.addEventListener("change", event => importCountdowns(event.target.files[0]));
+    editorDialog.addEventListener("cancel", event => {
+      event.preventDefault();
+      closeEditor();
+    });
+
+    setInterval(render, 1000);
+    render();
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
